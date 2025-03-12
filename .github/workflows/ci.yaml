@@ -23,6 +23,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
     - name: Checkout repository and submodules
       uses: actions/checkout@v4
@@ -52,6 +57,9 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+          # network=host driver-opt needed to push to local registry
+          driver-opts: network=host
 
     - name: Build base image
       id: buildbase
@@ -61,7 +69,7 @@ jobs:
         file: azure-devops-agent-on-kubernetes/Dockerfile
         push: false
         platforms: ${{ matrix.platform.docker }}
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:base-${{ env.PLATFORM_PAIR }}
+        tags: localhost:5000/agent-base-image:latest
         build-args: |
           ARG_VSTS_AGENT_VERSION=4.252.0
           PLATFORM=${{ matrix.platform.agent }}
@@ -80,8 +88,8 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
-          ARG_UBUNTU_BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          ARG_UBUNTU_BASE_IMAGE_TAG=base-${{ env.PLATFORM_PAIR }}
+          ARG_UBUNTU_BASE_IMAGE=localhost:5000/agent-base-image
+          ARG_UBUNTU_BASE_IMAGE_TAG=latest
           PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
