@@ -1,0 +1,4 @@
+[submodule "azure-devops-agent-on-kubernetes"]
+	path = azure-devops-agent-on-kubernetes
+	url = https://github.com/hangy/azure-devops-agent-on-kubernetes.git
+	branch = feature/docker-build-args
