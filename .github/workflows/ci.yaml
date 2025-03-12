@@ -6,7 +6,8 @@ on:
     - main
 
 env:
-  REGISTRY_IMAGE: hangy/azure-devops-agent
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
@@ -32,13 +33,14 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY_IMAGE }}
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-    #     - name: Login to Docker Hub
-    #       uses: docker/login-action@v3
-    #       with:
-    #         username: ${{ vars.DOCKERHUB_USERNAME }}
-    #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -67,10 +69,10 @@ jobs:
       with:
         context: src
         file: Dockerfile
-        push: false
+        push: true
         platforms: ${{ matrix.platform.docker }}
         labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ env.REGISTRY_IMAGE }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
           --build-arg ARG_UBUNTU_BASE_IMAGE=tmp
@@ -93,45 +95,45 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
-#  merge:
-#    runs-on: ubuntu-latest
-#    needs:
-#    - build
-#    steps:
-#    - name: Download digests
-#      uses: actions/download-artifact@v4
-#      with:
-#        path: ${{ runner.temp }}/digests
-#        pattern: digests-*
-#        merge-multiple: true
-#
-#    - name: Login to Docker Hub
-#      uses: docker/login-action@v3
-#      with:
-#        username: ${{ vars.DOCKERHUB_USERNAME }}
-#        password: ${{ secrets.DOCKERHUB_TOKEN }}
-#
-#    - name: Set up Docker Buildx
-#      uses: docker/setup-buildx-action@v3
-#
-#    - name: Docker meta
-#      id: meta
-#      uses: docker/metadata-action@v5
-#      with:
-#        images: ${{ env.REGISTRY_IMAGE }}
-#        tags: |
-#          type=ref,event=branch
-#          type=ref,event=pr
-#          type=semver,pattern={{version}}
-#          type=semver,pattern={{major}}.{{minor}}
-#
-#    - name: Create manifest list and push
-#      working-directory: ${{ runner.temp }}/digests
-#      run: |
-#        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-#          $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-#
-#    - name: Inspect image
-#      run: |
-#        docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-#
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+    - build
+    steps:
+    - name: Download digests
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ runner.temp }}/digests
+        pattern: digests-*
+        merge-multiple: true
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Create manifest list and push
+      working-directory: ${{ runner.temp }}/digests
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+    - name: Inspect image
+      run: |
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
