@@ -15,7 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-        - linux/amd64
+        - docker: linux/amd64
+          agent: x64
+        - docker: linux/arm64
+          agent: arm64
     steps:
     - name: Checkout repository and submodules
       uses: actions/checkout@v2
@@ -24,7 +27,7 @@ jobs:
 
     - name: Prepare
       run: |
-        platform=${{ matrix.platform }}
+        platform=${{ matrix.platform.docker }}
         echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
     - name: Docker meta
@@ -52,11 +55,11 @@ jobs:
         context: azure-devops-agent-on-kubernetes/src
         file: azure-devops-agent-on-kubernetes/Dockerfile
         push: false
-        platforms: ${{ matrix.platform }}
+        platforms: ${{ matrix.platform.docker }}
         tags: tmp:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
         build-args: |
           --build-arg ARG_VSTS_AGENT_VERSION=4.252.0
-          --build-arg PLATFORM=${{ matrix.platform }}
+          --build-arg PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -67,14 +70,14 @@ jobs:
         context: src
         file: Dockerfile
         push: false
-        platforms: ${{ matrix.platform }}
+        platforms: ${{ matrix.platform.docker }}
         labels: ${{ steps.meta.outputs.labels }}
         tags: ${{ env.REGISTRY_IMAGE }}
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
           --build-arg ARG_UBUNTU_BASE_IMAGE=tmp
           --build-arg ARG_UBUNTU_BASE_IMAGE_TAG=${{ github.sha }}-${{ env.PLATFORM_PAIR }}
-          --build-arg PLATFORM=${{ matrix.platform }}
+          --build-arg PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
