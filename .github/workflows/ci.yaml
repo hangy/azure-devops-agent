@@ -54,6 +54,9 @@ jobs:
         push: false
         platforms: ${{ matrix.platform }}
         tags: tmp:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
+        build-args: |
+          --build-arg ARG_VSTS_AGENT_VERSION=4.252.0
+          --build-arg PLATFORM=${{ matrix.platform }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
