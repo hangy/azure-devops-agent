@@ -17,8 +17,6 @@ jobs:
         platform:
         - docker: linux/amd64
           agent: x64
-        - docker: linux/arm64
-          agent: arm64
     steps:
     - name: Checkout repository and submodules
       uses: actions/checkout@v2
