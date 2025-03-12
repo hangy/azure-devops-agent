@@ -54,6 +54,8 @@ jobs:
         push: false
         platforms: ${{ matrix.platform }}
         tags: tmp:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Build and push by digest
       id: build
@@ -70,6 +72,8 @@ jobs:
           --build-arg ARG_UBUNTU_BASE_IMAGE=tmp
           --build-arg ARG_UBUNTU_BASE_IMAGE_TAG=${{ github.sha }}-${{ env.PLATFORM_PAIR }}
           --build-arg PLATFORM=${{ matrix.platform }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Export digest
       run: |
