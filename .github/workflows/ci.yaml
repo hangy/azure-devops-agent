@@ -61,7 +61,7 @@ jobs:
         file: azure-devops-agent-on-kubernetes/Dockerfile
         push: false
         platforms: ${{ matrix.platform.docker }}
-        tags: tmp:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:base-${{ env.PLATFORM_PAIR }}
         build-args: |
           ARG_VSTS_AGENT_VERSION=4.252.0
           PLATFORM=${{ matrix.platform.agent }}
@@ -80,8 +80,8 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
-          ARG_UBUNTU_BASE_IMAGE=tmp
-          ARG_UBUNTU_BASE_IMAGE_TAG=${{ github.sha }}-${{ env.PLATFORM_PAIR }}
+          ARG_UBUNTU_BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          ARG_UBUNTU_BASE_IMAGE_TAG=base-${{ env.PLATFORM_PAIR }}
           PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
