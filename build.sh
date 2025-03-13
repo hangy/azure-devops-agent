@@ -14,8 +14,7 @@ REGISTRY=tmp TAG=base ./local-build.sh
 popd
 
 docker build ./src \
-    --build-arg ARG_UBUNTU_BASE_IMAGE=tmp/azure-devops-agent \
-    --build-arg ARG_UBUNTU_BASE_IMAGE_TAG=base \
+    --build-arg ARG_UBUNTU_BASE_IMAGE=tmp/azure-devops-agent:base \
     -f ./Dockerfile \
     -t ${REGISTRY}/azure-devops-agent:${TAG} \
     --progress=plain \

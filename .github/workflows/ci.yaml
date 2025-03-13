@@ -67,7 +67,7 @@ jobs:
       with:
         context: azure-devops-agent-on-kubernetes/src
         file: azure-devops-agent-on-kubernetes/Dockerfile
-        push: false
+        push: true
         platforms: ${{ matrix.platform.docker }}
         tags: localhost:5000/agent-base-image:latest
         build-args: |
@@ -88,11 +88,12 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
-          ARG_UBUNTU_BASE_IMAGE=localhost:5000/agent-base-image
-          ARG_UBUNTU_BASE_IMAGE_TAG=latest
+          ARG_UBUNTU_BASE_IMAGE=agent-base-image
           PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-contexts: |
+          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
 
     - name: Export digest
       run: |
