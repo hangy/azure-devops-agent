@@ -7,7 +7,7 @@ TAG="${TAG:-latest}"
 export UBUNTU_BASE_IMAGE="${UBUNTU_BASE_IMAGE:-ubuntu}"
 export UBUNTU_BASE_IMAGE_TAG="${UBUNTU_BASE_IMAGE_TAG:-20.04}"
 export TARGETARCH="${TARGETARCH:-linux-x64}"
-export VSTS_AGENT_VERSION="${VSTS_AGENT_VERSION:-4.252.0}"
+export VSTS_AGENT_VERSION="${VSTS_AGENT_VERSION:-4.253.0}"
 
 pushd azure-devops-agent-on-kubernetes
 REGISTRY=tmp TAG=base ./local-build.sh

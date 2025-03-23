@@ -71,7 +71,7 @@ jobs:
         platforms: ${{ matrix.platform.docker }}
         tags: localhost:5000/agent-base-image:latest
         build-args: |
-          ARG_VSTS_AGENT_VERSION=4.252.0
+          ARG_VSTS_AGENT_VERSION=4.253.0
           PLATFORM=${{ matrix.platform.agent }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
