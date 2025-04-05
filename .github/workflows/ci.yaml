@@ -3,7 +3,7 @@ name: ci
 on:
   push:
     branches:
-    - main
+      - main
   schedule:
     - cron: '0 0 * * 3'
 
@@ -76,8 +76,8 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Build and push by digest
-      id: build
+    - name: Build and push by digest dotnet
+      id: build-dotnet
       uses: docker/build-push-action@v6
       with:
         context: src
@@ -86,6 +86,47 @@ jobs:
         platforms: ${{ matrix.platform.docker }}
         labels: ${{ steps.meta.outputs.labels }}
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        target: agent-dotnet
+        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+        build-args: |
+          ARG_UBUNTU_BASE_IMAGE=agent-base-image
+          PLATFORM=${{ matrix.platform.agent }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-contexts: |
+          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+    - name: Build and push by digest java
+      id: build-java
+      uses: docker/build-push-action@v6
+      with:
+        context: src
+        file: Dockerfile
+        push: true
+        platforms: ${{ matrix.platform.docker }}
+        labels: ${{ steps.meta.outputs.labels }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        target: agent-java
+        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+        build-args: |
+          ARG_UBUNTU_BASE_IMAGE=agent-base-image
+          PLATFORM=${{ matrix.platform.agent }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-contexts: |
+          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+    - name: Build and push by digest android
+      id: build-android
+      uses: docker/build-push-action@v6
+      with:
+        context: src
+        file: Dockerfile
+        push: true
+        platforms: ${{ matrix.platform.docker }}
+        labels: ${{ steps.meta.outputs.labels }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        target: agent-java
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
           ARG_UBUNTU_BASE_IMAGE=agent-base-image
@@ -97,9 +138,13 @@ jobs:
 
     - name: Export digest
       run: |
-        mkdir -p ${{ runner.temp }}/digests
-        digest="${{ steps.build.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/${digest#sha256:}"
+        mkdir -p ${{ runner.temp }}/digests/dotnet ${{ runner.temp }}/digests/java ${{ runner.temp }}/digests/android
+        digest="${{ steps.build-dotnet.outputs.digest }}"
+        touch "${{ runner.temp }}/digests/dotnet/${digest#sha256:}"
+        digest="${{ steps.build-java.outputs.digest }}"
+        touch "${{ runner.temp }}/digests/java/${digest#sha256:}"
+        digest="${{ steps.build-android.outputs.digest }}"
+        touch "${{ runner.temp }}/digests/android/${digest#sha256:}"
 
     - name: Upload digest
       uses: actions/upload-artifact@v4
@@ -134,8 +179,42 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Docker meta
-      id: meta
+    - name: Docker meta dotnet
+      id: meta-dotnet
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch,suffix=-dotnet
+          type=ref,event=pr,suffix=-dotnet
+          type=semver,pattern={{version}},suffix=-dotnet
+          type=semver,pattern={{major}}.{{minor}},suffix=-dotnet
+
+    - name: Create manifest list and push dotnet
+      working-directory: ${{ runner.temp }}/digests/dotnet
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+    - name: Docker meta java
+      id: meta-java
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch,suffix=-java
+          type=ref,event=pr,suffix=-java
+          type=semver,pattern={{version}},suffix=-java
+          type=semver,pattern={{major}}.{{minor}},suffix=-java
+
+    - name: Create manifest list and push java
+      working-directory: ${{ runner.temp }}/digests/java
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+    - name: Docker meta android
+      id: meta-android
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -145,12 +224,14 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
-    - name: Create manifest list and push
-      working-directory: ${{ runner.temp }}/digests
+    - name: Create manifest list and push android
+      working-directory: ${{ runner.temp }}/digests/android
       run: |
         docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
           $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
-    - name: Inspect image
+    - name: Inspect images
       run: |
-        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-dotnet.outputs.version }}
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-java.outputs.version }}
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-android.outputs.version }}
