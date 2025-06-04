@@ -53,12 +53,13 @@ USER azdouser
 FROM agent-java AS agent-android
 
 # Android SDK
-ENV ANDROID_COMPILE_SDK=34
-ENV ANDROID_BUILD_TOOLS=34.0.0
-ENV ANDROID_SDK_TOOLS=10406996
-ENV NDK_VERSION=25.1.8937393
-ENV CMAKE_VERSION=3.22.1
+ENV ANDROID_COMPILE_SDK=36
+ENV ANDROID_BUILD_TOOLS=36.0.0
+ENV ANDROID_SDK_TOOLS=13114758
+ENV NDK_VERSION=29.0.13113456
+ENV CMAKE_VERSION=4.0.2
 
+WORKDIR /home/azdouser
 RUN \
     wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip && \
     mkdir -p android-sdk-linux/cmdline-tools && \
