@@ -59,6 +59,7 @@ ENV ANDROID_SDK_TOOLS=13114758
 ENV NDK_VERSION=29.0.13113456
 ENV CMAKE_VERSION=4.0.2
 
+WORKDIR /home/azdouser
 RUN \
     wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip && \
     mkdir -p android-sdk-linux/cmdline-tools && \
