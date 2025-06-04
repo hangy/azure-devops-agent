@@ -126,7 +126,27 @@ jobs:
         platforms: ${{ matrix.platform.docker }}
         labels: ${{ steps.meta.outputs.labels }}
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        target: agent-java
+        target: agent-android
+        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+        build-args: |
+          ARG_UBUNTU_BASE_IMAGE=agent-base-image
+          PLATFORM=${{ matrix.platform.agent }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-contexts: |
+          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+    - name: Build and push by digest flutter
+      id: build-flutter
+      uses: docker/build-push-action@v6
+      with:
+        context: src
+        file: Dockerfile
+        push: true
+        platforms: ${{ matrix.platform.docker }}
+        labels: ${{ steps.meta.outputs.labels }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        target: agent-flutter
         outputs: type=image,push-by-digest=true,name-canonical=true,push=true
         build-args: |
           ARG_UBUNTU_BASE_IMAGE=agent-base-image
@@ -138,13 +158,15 @@ jobs:
 
     - name: Export digest
       run: |
-        mkdir -p ${{ runner.temp }}/digests/dotnet ${{ runner.temp }}/digests/java ${{ runner.temp }}/digests/android
+        mkdir -p ${{ runner.temp }}/digests/dotnet ${{ runner.temp }}/digests/java ${{ runner.temp }}/digests/android ${{ runner.temp }}/digests/flutter
         digest="${{ steps.build-dotnet.outputs.digest }}"
         touch "${{ runner.temp }}/digests/dotnet/${digest#sha256:}"
         digest="${{ steps.build-java.outputs.digest }}"
         touch "${{ runner.temp }}/digests/java/${digest#sha256:}"
         digest="${{ steps.build-android.outputs.digest }}"
         touch "${{ runner.temp }}/digests/android/${digest#sha256:}"
+        digest="${{ steps.build-flutter.outputs.digest }}"
+        touch "${{ runner.temp }}/digests/flutter/${digest#sha256:}"
 
     - name: Upload digest
       uses: actions/upload-artifact@v4
@@ -219,13 +241,30 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
+          type=ref,event=branch,suffix=-android
+          type=ref,event=pr,suffix=-android
+          type=semver,pattern={{version}},suffix=-android
+          type=semver,pattern={{major}}.{{minor}},suffix=-android
 
     - name: Create manifest list and push android
       working-directory: ${{ runner.temp }}/digests/android
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+    - name: Docker meta flutter
+      id: meta-flutter
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch,suffix=-flutter
+          type=ref,event=pr,suffix=-flutter
+          type=semver,pattern={{version}},suffix=-flutter
+          type=semver,pattern={{major}}.{{minor}},suffix=-flutter
+
+    - name: Create manifest list and push flutter
+      working-directory: ${{ runner.temp }}/digests/flutter
       run: |
         docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
           $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
@@ -235,3 +274,4 @@ jobs:
         docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-dotnet.outputs.version }}
         docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-java.outputs.version }}
         docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-android.outputs.version }}
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-flutter.outputs.version }}
