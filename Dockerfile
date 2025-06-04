@@ -59,19 +59,18 @@ ENV ANDROID_SDK_TOOLS=13114758
 ENV NDK_VERSION=29.0.13113456
 ENV CMAKE_VERSION=4.0.2
 
-WORKDIR /home/azdouser
 RUN \
     wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip && \
-    mkdir -p android-sdk-linux/cmdline-tools && \
-    unzip -d android-sdk-linux/cmdline-tools android-sdk.zip && \
+    mkdir -p /home/azdouser/android-sdk-linux/cmdline-tools && \
+    unzip -d /home/azdouser/android-sdk-linux/cmdline-tools android-sdk.zip && \
     rm android-sdk.zip && \
-    mv android-sdk-linux/cmdline-tools/cmdline-tools android-sdk-linux/cmdline-tools/latest && \
-    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null && \
-    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platform-tools" >/dev/null && \
-    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null && \
-    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}" >/dev/null && \
-    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "cmake;${CMAKE_VERSION}" >/dev/null && \
-    (yes || true) | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --licenses
+    mv /home/azdouser/android-sdk-linux/cmdline-tools/cmdline-tools /home/azdouser/android-sdk-linux/cmdline-tools/latest && \
+    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null && \
+    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platform-tools" >/dev/null && \
+    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null && \
+    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}" >/dev/null && \
+    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "cmake;${CMAKE_VERSION}" >/dev/null && \
+    (yes || true) | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --licenses
 
 ENV ANDROID_SDK_ROOT="/home/azdouser/android-sdk-linux"
 ENV ANDROID_HOME="/home/azdouser/android-sdk-linux"
@@ -79,3 +78,24 @@ ENV ANDROID_HOME="/home/azdouser/android-sdk-linux"
 ENV ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}"
 ENV PATH="${PATH}:$ANDROID_HOME/platform-tools"
 ENV PATH="${PATH}:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_NDK"
+
+FROM agent-android AS agent-flutter
+
+ENV FLUTTER_VERSION=3.32.2
+
+USER root
+
+RUN set -x && \
+    apt-get update && \
+    apt-get install -y curl git unzip xz-utils zip libglu1-mesa libc6:amd64 libstdc++6:amd64 lib32z1 libbz2-1.0:amd64 && \
+    rm -rf /var/lib/apt/lists/*
+
+USER azdouser
+
+RUN set -x && \
+    wget --quiet --output-document=flutter-sdk.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz && \
+    tar -xf flutter-sdk.tar.xz -C /home/azdouser && \
+    rm flutter-sdk.tar.xz
+
+ENV FLUTTER_HOME="/home/azdouser/flutter"
+ENV PATH="${PATH}:${FLUTTER_HOME}/bin"
