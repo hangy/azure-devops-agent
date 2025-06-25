@@ -8,7 +8,7 @@ WORKDIR /azp
 COPY ./*.sh .
 
 # Install Compose
-RUN curl -L https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose \
+RUN curl -L https://github.com/docker/compose/releases/download/v2.37.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose \
     && chmod +x /usr/local/bin/docker-compose \
     && docker-compose --version
 
@@ -56,7 +56,7 @@ FROM agent-java AS agent-android
 ENV ANDROID_COMPILE_SDK=36
 ENV ANDROID_BUILD_TOOLS=36.0.0
 ENV ANDROID_SDK_TOOLS=13114758
-ENV NDK_VERSION=29.0.13113456
+ENV NDK_VERSION=29.0.13599879
 ENV CMAKE_VERSION=4.0.2
 
 RUN \
@@ -81,7 +81,7 @@ ENV PATH="${PATH}:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_
 
 FROM agent-android AS agent-flutter
 
-ENV FLUTTER_VERSION=3.32.2
+ENV FLUTTER_VERSION=3.32.5
 
 USER root
 
