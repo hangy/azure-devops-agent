@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
     set -euo pipefail; \
     apt-get update && \
-    apt-get install ${APT_FLAGS} ca-certificates curl git unzip
+    apt-get install ${APT_FLAGS} ca-certificates curl git unzip xz-utils zip
 
 # Install Compose
 ARG TARGETARCH
@@ -148,9 +148,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             libbz2-1.0:amd64 \
             libc6:amd64 \
             libglu1-mesa \
-            libstdc++6:amd64 \
-            xz-utils \
-            zip
+            libstdc++6:amd64
 
 USER azdouser
 
