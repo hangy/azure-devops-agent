@@ -56,8 +56,8 @@ FROM agent-java AS agent-android
 ENV ANDROID_COMPILE_SDK=36
 ENV ANDROID_BUILD_TOOLS=36.0.0
 ENV ANDROID_SDK_TOOLS=13114758
-ENV NDK_VERSION=29.0.13599879
-ENV CMAKE_VERSION=4.0.2
+ENV NDK_VERSION=29.0.14206865
+ENV CMAKE_VERSION=4.1.2
 
 RUN \
     wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip && \
