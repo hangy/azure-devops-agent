@@ -49,12 +49,21 @@ RUN set -euo pipefail; \
         /usr/local/bin/docker-compose --version
 
 # Install Kustomize
+ARG KUSTOMIZE_VERSION=5.7.1
+ARG KUSTOMIZE_SHA256=""
 RUN set -euo pipefail; \
-    curl -fsSL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh \
-    -o install_kustomize.sh && \
-    chmod a+rwx install_kustomize.sh && \
-    ./install_kustomize.sh /usr/local/bin && \
-    rm install_kustomize.sh && \
+    KUSTOMIZE_ARCH="${TARGETARCH}"; \
+    case "${TARGETARCH}" in \
+        amd64) KUSTOMIZE_ARCH="amd64" ;; \
+        arm64) KUSTOMIZE_ARCH="arm64" ;; \
+    esac; \
+    curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_${KUSTOMIZE_ARCH}.tar.gz" -o kustomize.tar.gz; \
+    if [ -n "${KUSTOMIZE_SHA256}" ]; then \
+        echo "${KUSTOMIZE_SHA256}  kustomize.tar.gz" | sha256sum -c -; \
+    fi; \
+    tar -xzf kustomize.tar.gz -C /usr/local/bin; \
+    rm kustomize.tar.gz; \
+    chmod +x /usr/local/bin/kustomize; \
     kustomize version
 
 USER azdouser
