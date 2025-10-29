@@ -6,6 +6,9 @@ ARG VSTS_AGENT_VERSION
 
 FROM ${ARG_UBUNTU_BASE_IMAGE} AS agent
 
+# Use bash with strict options for all subsequent RUN commands in this stage
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 # Re-declare build metadata args for this stage (required for some linters)
 ARG VCS_REF
 ARG BUILD_DATE
@@ -29,14 +32,12 @@ COPY ./*.sh .
 # Install common build tools
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
-    set -euo pipefail; \
     apt-get update && \
     apt-get install ${APT_FLAGS} ca-certificates curl git unzip xz-utils zip
 
 # Install Compose
 ARG TARGETARCH
-RUN set -euo pipefail; \
-        COMPOSE_ARCH="${TARGETARCH}"; \
+RUN COMPOSE_ARCH="${TARGETARCH}"; \
         case "${TARGETARCH}" in \
             amd64) COMPOSE_ARCH="x86_64" ;; \
             arm64) COMPOSE_ARCH="aarch64" ;; \
@@ -51,8 +52,7 @@ RUN set -euo pipefail; \
 # Install Kustomize
 ARG KUSTOMIZE_VERSION=5.7.1
 ARG KUSTOMIZE_SHA256=""
-RUN set -euo pipefail; \
-    KUSTOMIZE_ARCH="${TARGETARCH}"; \
+RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     case "${TARGETARCH}" in \
         amd64) KUSTOMIZE_ARCH="amd64" ;; \
         arm64) KUSTOMIZE_ARCH="arm64" ;; \
@@ -71,11 +71,13 @@ ENTRYPOINT ["./add-certs-and-start.sh"]
 
 FROM agent AS agent-dotnet
 
+# Re-apply bash strict shell in new stage
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 # Add .NET SDK
 ARG DOTNET_VERSION=9.0.101
 ARG DOTNET_SHA512=""
-RUN set -euo pipefail; \
-    DOTNET_ARCH="${TARGETARCH}"; \
+RUN DOTNET_ARCH="${TARGETARCH}"; \
     case "${TARGETARCH}" in \
         amd64) DOTNET_ARCH="x64" ;; \
         arm64) DOTNET_ARCH="arm64" ;; \
@@ -96,14 +98,16 @@ ENV PATH="${DOTNET_ROOT}:${PATH}"
 
 FROM agent-dotnet AS agent-java
 
+# Re-apply bash strict shell in new stage
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 USER root
 
 # Add Java
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-        --mount=type=cache,target=/var/lib/apt \
-        set -euo pipefail; \
-        apt-get update && \
-        apt-get install ${APT_FLAGS} \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
+    apt-get install ${APT_FLAGS} \
             ant \
             gradle \
             maven \
@@ -125,6 +129,9 @@ USER azdouser
 
 FROM agent-java AS agent-android
 
+# Re-apply bash strict shell in new stage
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 # Android SDK
 ARG ANDROID_COMPILE_SDK=36
 ARG ANDROID_BUILD_TOOLS=36.0.0
@@ -134,8 +141,7 @@ ARG CMAKE_VERSION=4.1.2
 ARG ANDROID_SDK_ZIP_SHA256=""
 ARG ANDROID_NDK_SHA256="" # placeholder; SDK manager handles NDK integrity
 
-RUN set -euo pipefail; \
-    curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip" -o android-sdk.zip && \
+RUN curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip" -o android-sdk.zip && \
     if [ -n "${ANDROID_SDK_ZIP_SHA256}" ]; then echo "${ANDROID_SDK_ZIP_SHA256}  android-sdk.zip" | sha256sum -c -; fi && \
     mkdir -p /home/azdouser/android-sdk-linux/cmdline-tools && \
     unzip -d /home/azdouser/android-sdk-linux/cmdline-tools android-sdk.zip && \
@@ -158,16 +164,18 @@ ENV PATH="${PATH}:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_
 
 FROM agent-android AS agent-flutter
 
+# Re-apply bash strict shell in new stage
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 ARG FLUTTER_VERSION=3.35.7
 ARG FLUTTER_TAR_SHA256=""
 
 USER root
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-        --mount=type=cache,target=/var/lib/apt \
-        set -euo pipefail; \
-        apt-get update && \
-        apt-get install ${APT_FLAGS} \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
+    apt-get install ${APT_FLAGS} \
             lib32z1 \
             libbz2-1.0:amd64 \
             libc6:amd64 \
@@ -176,8 +184,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 USER azdouser
 
-RUN set -euo pipefail; \
-    curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -o flutter-sdk.tar.xz && \
+RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -o flutter-sdk.tar.xz && \
     if [ -n "${FLUTTER_TAR_SHA256}" ]; then echo "${FLUTTER_TAR_SHA256}  flutter-sdk.tar.xz" | sha256sum -c -; fi && \
     tar -xf flutter-sdk.tar.xz -C /home/azdouser && \
     rm flutter-sdk.tar.xz
