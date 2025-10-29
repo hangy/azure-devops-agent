@@ -71,13 +71,28 @@ ENTRYPOINT ["./add-certs-and-start.sh"]
 
 FROM agent AS agent-dotnet
 
-# Add .NET
+# Add .NET SDK
+ARG DOTNET_VERSION=9.0.101
+ARG DOTNET_SHA512=""
 RUN set -euo pipefail; \
-    curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh && \
-    chmod +x dotnet-install.sh && \
-    ./dotnet-install.sh --os linux --channel STS && \
-    rm dotnet-install.sh
-ENV PATH="/home/azdouser/.dotnet:${PATH}"
+    DOTNET_ARCH="${TARGETARCH}"; \
+    case "${TARGETARCH}" in \
+        amd64) DOTNET_ARCH="x64" ;; \
+        arm64) DOTNET_ARCH="arm64" ;; \
+    esac; \
+    curl -fsSL "https://dotnetcli.azureedge.net/dotnet/Sdk/${DOTNET_VERSION}/dotnet-sdk-${DOTNET_VERSION}-linux-${DOTNET_ARCH}.tar.gz" -o dotnet.tar.gz; \
+    if [ -n "${DOTNET_SHA512}" ]; then \
+        echo "${DOTNET_SHA512}  dotnet.tar.gz" | sha512sum -c -; \
+    fi; \
+    mkdir -p /home/azdouser/.dotnet; \
+    tar -xzf dotnet.tar.gz -C /home/azdouser/.dotnet; \
+    rm dotnet.tar.gz
+
+ENV DOTNET_ROOT="/home/azdouser/.dotnet"
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+ENV DOTNET_NOLOGO=1
+ENV PATH="${DOTNET_ROOT}:${PATH}"
 
 FROM agent-dotnet AS agent-java
 
