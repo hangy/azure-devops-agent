@@ -36,9 +36,19 @@ FROM agent-dotnet AS agent-java
 USER root
 
 # Add Java
-RUN apt-get install openjdk-8-jdk-headless openjdk-17-jdk-headless openjdk-21-jdk-headless ant gradle maven \
-    && update-java-alternatives -a \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -x && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ant \
+    gradle \
+    maven \
+    openjdk-8-jdk-headless \
+    openjdk-17-jdk-headless \
+    openjdk-21-jdk-headless && \
+    update-java-alternatives -a || true && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV JAVA_HOME_8_X64=/usr/lib/jvm/java-8-openjdk-amd64
 ENV JAVA_HOME_17_X64=/usr/lib/jvm/java-17-openjdk-amd64
 ENV JAVA_HOME_21_X64=/usr/lib/jvm/java-21-openjdk-amd64
