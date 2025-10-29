@@ -53,11 +53,11 @@ USER azdouser
 FROM agent-java AS agent-android
 
 # Android SDK
-ENV ANDROID_COMPILE_SDK=36
-ENV ANDROID_BUILD_TOOLS=36.0.0
-ENV ANDROID_SDK_TOOLS=13114758
-ENV NDK_VERSION=29.0.14206865
-ENV CMAKE_VERSION=4.1.2
+ARG ANDROID_COMPILE_SDK=36
+ARG ANDROID_BUILD_TOOLS=36.0.0
+ARG ANDROID_SDK_TOOLS=13114758
+ARG NDK_VERSION=29.0.14206865
+ARG CMAKE_VERSION=4.1.2
 
 RUN \
     wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip && \
@@ -81,7 +81,7 @@ ENV PATH="${PATH}:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_
 
 FROM agent-android AS agent-flutter
 
-ENV FLUTTER_VERSION=3.35.7
+ARG FLUTTER_VERSION=3.35.7
 
 USER root
 
