@@ -16,14 +16,17 @@ variable "PLATFORMS" {
 variable "PUSH_GHCR" {
   default = false
 }
-
-variable "BASE_IMAGE" {
-  # Base image reference passed in (built separately). For local dev you can leave default and build base in cache.
-  default = "agent-base-image:latest"
-}
-
 group "default" {
   targets = ["dotnet", "java", "android", "flutter"]
+}
+
+# Internal base image target. This produces the richer agent-base-image.
+target "base" {
+  # Use submodule root as dockerfile location and include src file via COPY by adjusting build args.
+  context = "azure-devops-agent-on-kubernetes/src"
+  dockerfile = "../Dockerfile"
+  platforms = PLATFORMS
+  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
 }
 
 target "common" {
@@ -34,7 +37,7 @@ target "common" {
     ARG_UBUNTU_BASE_IMAGE = "agent-base-image"
   }
   contexts = {
-    agent-base-image = "docker-image://${BASE_IMAGE}"
+    agent-base-image = "target:base"
   }
   cache-from = ["type=gha"]
   cache-to = ["type=gha,mode=max"]
