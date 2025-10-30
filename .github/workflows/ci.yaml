@@ -120,8 +120,28 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push by digest ${{ matrix.suffix }}
+      - name: Build ${{ matrix.suffix }} image
         id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          platforms: ${{ matrix.docker }}
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: localhost:5000/${{ matrix.target }}:latest
+          target: ${{ matrix.target }}
+          outputs: type=image,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=${{ matrix.agent }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-contexts: |
+            agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+      - name: Push to GHCR by digest (main branch only)
+        if: github.ref == 'refs/heads/main'
+        id: push-ghcr
         uses: docker/build-push-action@v6
         with:
           context: src
@@ -136,17 +156,18 @@ jobs:
             ARG_UBUNTU_BASE_IMAGE=agent-base-image
             PLATFORM=${{ matrix.agent }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-contexts: |
             agent-base-image=docker-image://localhost:5000/agent-base-image:latest
 
-      - name: Export digest
+      - name: Export digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p ${{ runner.temp }}/digests/${{ matrix.suffix }}
-          digest="${{ steps.build-target.outputs.digest }}"
+          digest="${{ steps.push-ghcr.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${{ matrix.suffix }}/${digest#sha256:}"
 
-      - name: Upload digest
+      - name: Upload digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ matrix.docker }}-${{ matrix.suffix }}
@@ -231,8 +252,28 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push by digest android
+      - name: Build android image
         id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          platforms: linux/amd64
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: localhost:5000/agent-android:latest
+          target: agent-android
+          outputs: type=image,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=x64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-contexts: |
+            agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+      - name: Push to GHCR by digest (main branch only)
+        if: github.ref == 'refs/heads/main'
+        id: push-ghcr
         uses: docker/build-push-action@v6
         with:
           context: src
@@ -247,17 +288,18 @@ jobs:
             ARG_UBUNTU_BASE_IMAGE=agent-base-image
             PLATFORM=x64
           cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-contexts: |
             agent-base-image=docker-image://localhost:5000/agent-base-image:latest
 
-      - name: Export digest
+      - name: Export digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p ${{ runner.temp }}/digests/android
-          digest="${{ steps.build-target.outputs.digest }}"
+          digest="${{ steps.push-ghcr.outputs.digest }}"
           touch "${{ runner.temp }}/digests/android/${digest#sha256:}"
 
-      - name: Upload digest
+      - name: Upload digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: digests-linux-amd64-android
@@ -340,8 +382,26 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push by digest flutter
+      - name: Build flutter image
         id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          platforms: linux/amd64
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: localhost:5000/agent-flutter:latest
+          target: agent-flutter
+          outputs: type=image,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=x64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push to GHCR by digest (main branch only)
+        if: github.ref == 'refs/heads/main'
+        id: push-ghcr
         uses: docker/build-push-action@v6
         with:
           context: src
@@ -356,15 +416,16 @@ jobs:
             ARG_UBUNTU_BASE_IMAGE=agent-base-image
             PLATFORM=x64
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      - name: Export digest
+      - name: Export digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p ${{ runner.temp }}/digests/flutter
-          digest="${{ steps.build-target.outputs.digest }}"
+          digest="${{ steps.push-ghcr.outputs.digest }}"
           touch "${{ runner.temp }}/digests/flutter/${digest#sha256:}"
 
-      - name: Upload digest
+      - name: Upload digest (main branch only)
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: digests-linux-amd64-flutter
@@ -374,6 +435,7 @@ jobs:
 
   merge:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     needs: 
       - build-dotnet-java
       - build-flutter
