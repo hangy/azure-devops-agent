@@ -31,7 +31,10 @@ target "common" {
   dockerfile = "Dockerfile"
   platforms = PLATFORMS
   args = {
-    ARG_UBUNTU_BASE_IMAGE = BASE_IMAGE
+    ARG_UBUNTU_BASE_IMAGE = "agent-base-image"
+  }
+  contexts = {
+    agent-base-image = "docker-image://${BASE_IMAGE}"
   }
   cache-from = ["type=gha"]
   cache-to = ["type=gha,mode=max"]

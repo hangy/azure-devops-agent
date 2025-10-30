@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# High-level: build base image with local-build.sh, tag as agent-base-image:latest, then bake capability targets.
+# High-level: build base image with local-build.sh, then bake capability targets using that image via BASE_IMAGE variable.
 
 REGISTRY="${REGISTRY:-agent}"          # Only used if pushing manually later
 TAG="${TAG:-latest}"                   # Not directly used by bake unless we extend tags
@@ -17,22 +17,21 @@ pushd "${K8S_DIR}" >/dev/null
 REGISTRY=tmp TAG=base ./local-build.sh >/dev/null
 popd >/dev/null
 
-# Ensure buildx builder exists
-if ! docker buildx inspect bake-builder >/dev/null 2>&1; then
-    echo "[info] Creating buildx builder 'bake-builder'"
-    docker buildx create --name bake-builder --use >/dev/null
+if ! docker buildx inspect >/dev/null 2>&1; then
+    echo "[info] No default buildx builder; creating one"
+    docker buildx create --use >/dev/null
 fi
 
 # Allow specifying targets as script args; default builds all (group default)
 TARGETS=("$@")
-SET_ARGS="BASE_IMAGE=tmp/azure-devops-agent:base"
+BASE_IMAGE_REF="tmp/azure-devops-agent:base"
 
-echo "[info] Invoking bake (targets: ${TARGETS[*]:-default})"
+echo "[info] Invoking bake (targets: ${TARGETS[*]:-default}) using BASE_IMAGE='${BASE_IMAGE_REF}'"
 if [ ${#TARGETS[@]} -eq 0 ]; then
-    docker buildx bake -f docker-bake.hcl --set "${SET_ARGS}"
+    BASE_IMAGE="${BASE_IMAGE_REF}" docker buildx bake -f docker-bake.hcl
 else
-    docker buildx bake -f docker-bake.hcl "${TARGETS[@]}" --set "${SET_ARGS}"
+    BASE_IMAGE="${BASE_IMAGE_REF}" docker buildx bake -f docker-bake.hcl "${TARGETS[@]}"
 fi
 
 echo "[success] Bake completed. Images loaded locally (single-arch)."
-echo "To enable multi-arch and push: docker buildx bake -f docker-bake.hcl --set *.platforms=linux/amd64,linux/arm64 --set PUSH_GHCR=true REGISTRY=${REGISTRY} IMAGE_NAME=${REGISTRY}/azure-devops-agent"
+echo "To enable multi-arch and push: BASE_IMAGE='${BASE_IMAGE_REF}' docker buildx bake -f docker-bake.hcl --set *.platforms=linux/amd64,linux/arm64 --set PUSH_GHCR=true REGISTRY=${REGISTRY} IMAGE_NAME=${REGISTRY}/azure-devops-agent"
