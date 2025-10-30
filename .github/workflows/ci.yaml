@@ -12,266 +12,463 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
+  base:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-        - docker: linux/amd64
-          agent: x64
     permissions:
       contents: read
-      packages: write
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build base image
+        id: buildbase
+        uses: docker/build-push-action@v6
+        with:
+          context: azure-devops-agent-on-kubernetes/src
+          file: azure-devops-agent-on-kubernetes/Dockerfile
+          outputs: type=docker,dest=/tmp/agent-base-image.tar
+          platforms: linux/amd64
+          tags: agent-base-image:latest
+          build-args: |
+            ARG_VSTS_AGENT_VERSION=4.261.0
+            PLATFORM=x64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-contexts: |
+            agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+            agent-android=docker-image://localhost:5000/agent-android:latest
+
+      - name: Upload base image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-base-image
+          path: /tmp/agent-base-image.tar
+          retention-days: 1
+
+  build-dotnet-java:
+    runs-on: ubuntu-latest
+    needs: base
     services:
       registry:
         image: registry:2
         ports:
           - 5000:5000
-    steps:
-    - name: Checkout repository and submodules
-      uses: actions/checkout@v5
-      with:
-        submodules: recursive
-
-    - name: Prepare
-      run: |
-        platform=${{ matrix.platform.docker }}
-        echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
-    - name: Docker meta
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-    - name: Log in to the Container registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      with:
-          # network=host driver-opt needed to push to local registry
-          driver-opts: network=host
-
-    - name: Build base image
-      id: buildbase
-      uses: docker/build-push-action@v6
-      with:
-        context: azure-devops-agent-on-kubernetes/src
-        file: azure-devops-agent-on-kubernetes/Dockerfile
-        push: true
-        platforms: ${{ matrix.platform.docker }}
-        tags: localhost:5000/agent-base-image:latest
-        build-args: |
-          ARG_VSTS_AGENT_VERSION=4.261.0
-          PLATFORM=${{ matrix.platform.agent }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build and push by digest dotnet
-      id: build-dotnet
-      uses: docker/build-push-action@v6
-      with:
-        context: src
-        file: Dockerfile
-        push: true
-        platforms: ${{ matrix.platform.docker }}
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        target: agent-dotnet
-        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-        build-args: |
-          ARG_UBUNTU_BASE_IMAGE=agent-base-image
-          PLATFORM=${{ matrix.platform.agent }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-contexts: |
-          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
-
-    - name: Build and push by digest java
-      id: build-java
-      uses: docker/build-push-action@v6
-      with:
-        context: src
-        file: Dockerfile
-        push: true
-        platforms: ${{ matrix.platform.docker }}
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        target: agent-java
-        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-        build-args: |
-          ARG_UBUNTU_BASE_IMAGE=agent-base-image
-          PLATFORM=${{ matrix.platform.agent }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-contexts: |
-          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
-
-    - name: Build and push by digest android
-      id: build-android
-      uses: docker/build-push-action@v6
-      with:
-        context: src
-        file: Dockerfile
-        push: true
-        platforms: ${{ matrix.platform.docker }}
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        target: agent-android
-        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-        build-args: |
-          ARG_UBUNTU_BASE_IMAGE=agent-base-image
-          PLATFORM=${{ matrix.platform.agent }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-contexts: |
-          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
-
-    - name: Build and push by digest flutter
-      id: build-flutter
-      uses: docker/build-push-action@v6
-      with:
-        context: src
-        file: Dockerfile
-        push: true
-        platforms: ${{ matrix.platform.docker }}
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        target: agent-flutter
-        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-        build-args: |
-          ARG_UBUNTU_BASE_IMAGE=agent-base-image
-          PLATFORM=${{ matrix.platform.agent }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-contexts: |
-          agent-base-image=docker-image://localhost:5000/agent-base-image:latest
-
-    - name: Export digest
-      run: |
-        mkdir -p ${{ runner.temp }}/digests/dotnet ${{ runner.temp }}/digests/java ${{ runner.temp }}/digests/android ${{ runner.temp }}/digests/flutter
-        digest="${{ steps.build-dotnet.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/dotnet/${digest#sha256:}"
-        digest="${{ steps.build-java.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/java/${digest#sha256:}"
-        digest="${{ steps.build-android.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/android/${digest#sha256:}"
-        digest="${{ steps.build-flutter.outputs.digest }}"
-        touch "${{ runner.temp }}/digests/flutter/${digest#sha256:}"
-
-    - name: Upload digest
-      uses: actions/upload-artifact@v4
-      with:
-        name: digests-${{ env.PLATFORM_PAIR }}
-        path: ${{ runner.temp }}/digests/*
-        if-no-files-found: error
-        retention-days: 1
-
-  merge:
-    runs-on: ubuntu-latest
-    needs:
-    - build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - docker: linux/amd64
+            agent: x64
+            target: agent-dotnet
+            suffix: dotnet
+          - docker: linux/amd64
+            agent: x64
+            target: agent-java
+            suffix: java
     permissions:
       contents: read
       packages: write
     steps:
-    - name: Download digests
-      uses: actions/download-artifact@v5
-      with:
-        path: ${{ runner.temp }}/digests
-        pattern: digests-*
-        merge-multiple: true
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
-    - name: Log in to the Container registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download base image artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: agent-base-image
+          path: /tmp
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Load base image to local registry
+        run: |
+          docker load --input /tmp/agent-base-image.tar
+          docker tag agent-base-image:latest localhost:5000/agent-base-image:latest
+          docker push localhost:5000/agent-base-image:latest
 
-    - name: Docker meta dotnet
-      id: meta-dotnet
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch,suffix=-dotnet
-          type=ref,event=pr,suffix=-dotnet
-          type=semver,pattern={{version}},suffix=-dotnet
-          type=semver,pattern={{major}}.{{minor}},suffix=-dotnet
+      - name: Prepare
+        run: |
+          platform=${{ matrix.docker }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-    - name: Create manifest list and push dotnet
-      working-directory: ${{ runner.temp }}/digests/dotnet
-      run: |
-        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Docker meta java
-      id: meta-java
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch,suffix=-java
-          type=ref,event=pr,suffix=-java
-          type=semver,pattern={{version}},suffix=-java
-          type=semver,pattern={{major}}.{{minor}},suffix=-java
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Create manifest list and push java
-      working-directory: ${{ runner.temp }}/digests/java
-      run: |
-        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
 
-    - name: Docker meta android
-      id: meta-android
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch,suffix=-android
-          type=ref,event=pr,suffix=-android
-          type=semver,pattern={{version}},suffix=-android
-          type=semver,pattern={{major}}.{{minor}},suffix=-android
+      - name: Docker meta (target)
+        id: meta-target
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-    - name: Create manifest list and push android
-      working-directory: ${{ runner.temp }}/digests/android
-      run: |
-        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Build and push by digest ${{ matrix.suffix }}
+        id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          push: true
+          platforms: ${{ matrix.docker }}
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          target: ${{ matrix.target }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=${{ matrix.agent }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-contexts: |
+            agent-base-image=docker-image://localhost:5000/agent-base-image:latest
 
-    - name: Docker meta flutter
-      id: meta-flutter
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch,suffix=-flutter
-          type=ref,event=pr,suffix=-flutter
-          type=semver,pattern={{version}},suffix=-flutter
-          type=semver,pattern={{major}}.{{minor}},suffix=-flutter
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests/${{ matrix.suffix }}
+          digest="${{ steps.build-target.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${{ matrix.suffix }}/${digest#sha256:}"
 
-    - name: Create manifest list and push flutter
-      working-directory: ${{ runner.temp }}/digests/flutter
-      run: |
-        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-          $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.docker }}-${{ matrix.suffix }}
+          path: ${{ runner.temp }}/digests
+          if-no-files-found: error
+          retention-days: 1
 
-    - name: Inspect images
-      run: |
-        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-dotnet.outputs.version }}
-        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-java.outputs.version }}
-        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-android.outputs.version }}
-        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-flutter.outputs.version }}
+      - name: Export Java image for Android build
+        if: matrix.target == 'agent-java'
+        run: |
+          docker buildx build \
+            --file Dockerfile \
+            --target agent-java \
+            --platform ${{ matrix.docker }} \
+            --build-arg ARG_UBUNTU_BASE_IMAGE=agent-base-image \
+            --build-arg PLATFORM=${{ matrix.agent }} \
+            --build-context agent-base-image=docker-image://localhost:5000/agent-base-image:latest \
+            --output type=docker,dest=/tmp/agent-java-image.tar,name=agent-java:latest \
+            --cache-from type=gha \
+            src
+
+      - name: Upload Java image artifact
+        if: matrix.target == 'agent-java'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-java-image
+          path: /tmp/agent-java-image.tar
+          retention-days: 1
+
+  build-android:
+    runs-on: ubuntu-latest
+    needs: build-dotnet-java
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Download Java image artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: agent-java-image
+          path: /tmp
+
+      - name: Load Java image to local registry
+        run: |
+          docker load --input /tmp/agent-java-image.tar
+          docker tag agent-java:latest localhost:5000/agent-java:latest
+          docker push localhost:5000/agent-java:latest
+
+      - name: Prepare
+        run: |
+          platform=linux/amd64
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Docker meta (target)
+        id: meta-target
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push by digest android
+        id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          target: agent-android
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=x64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-contexts: |
+            agent-base-image=docker-image://localhost:5000/agent-base-image:latest
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests/android
+          digest="${{ steps.build-target.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/android/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-linux-amd64-android
+          path: ${{ runner.temp }}/digests
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Export Android image for Flutter build
+        run: |
+          docker buildx build \
+            --file Dockerfile \
+            --target agent-android \
+            --platform linux/amd64 \
+            --build-arg ARG_UBUNTU_BASE_IMAGE=agent-base-image \
+            --build-arg PLATFORM=x64 \
+            --output type=docker,dest=/tmp/agent-android-image.tar \
+            --cache-from type=gha \
+            --tag agent-android:latest \
+            src
+
+      - name: Upload Android image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-android-image
+          path: /tmp/agent-android-image.tar
+          retention-days: 1
+
+  build-flutter:
+    runs-on: ubuntu-latest
+    needs: build-android
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Download Android image artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: agent-android-image
+          path: /tmp
+
+      - name: Load Android image to local registry
+        run: |
+          docker load --input /tmp/agent-android-image.tar
+          docker tag agent-android:latest localhost:5000/agent-android:latest
+          docker push localhost:5000/agent-android:latest
+
+      - name: Prepare
+        run: |
+          platform=linux/amd64
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Docker meta (target)
+        id: meta-target
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push by digest flutter
+        id: build-target
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64
+          labels: ${{ steps.meta-target.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          target: agent-flutter
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ARG_UBUNTU_BASE_IMAGE=agent-base-image
+            PLATFORM=x64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests/flutter
+          digest="${{ steps.build-target.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/flutter/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-linux-amd64-flutter
+          path: ${{ runner.temp }}/digests
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: 
+      - build-dotnet-java
+      - build-flutter
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v5
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta dotnet
+        id: meta-dotnet
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-dotnet
+            type=ref,event=pr,suffix=-dotnet
+            type=semver,pattern={{version}},suffix=-dotnet
+            type=semver,pattern={{major}}.{{minor}},suffix=-dotnet
+
+      - name: Create manifest list and push dotnet
+        working-directory: ${{ runner.temp }}/digests/dotnet
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Docker meta java
+        id: meta-java
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-java
+            type=ref,event=pr,suffix=-java
+            type=semver,pattern={{version}},suffix=-java
+            type=semver,pattern={{major}}.{{minor}},suffix=-java
+
+      - name: Create manifest list and push java
+        working-directory: ${{ runner.temp }}/digests/java
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Docker meta android
+        id: meta-android
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-android
+            type=ref,event=pr,suffix=-android
+            type=semver,pattern={{version}},suffix=-android
+            type=semver,pattern={{major}}.{{minor}},suffix=-android
+
+      - name: Create manifest list and push android
+        working-directory: ${{ runner.temp }}/digests/android
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Docker meta flutter
+        id: meta-flutter
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-flutter
+            type=ref,event=pr,suffix=-flutter
+            type=semver,pattern={{version}},suffix=-flutter
+            type=semver,pattern={{major}}.{{minor}},suffix=-flutter
+
+      - name: Create manifest list and push flutter
+        working-directory: ${{ runner.temp }}/digests/flutter
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect images
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-dotnet.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-java.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-android.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta-flutter.outputs.version }}

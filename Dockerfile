@@ -96,7 +96,7 @@ ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 ENV DOTNET_NOLOGO=1
 ENV PATH="${DOTNET_ROOT}:${PATH}"
 
-FROM agent-dotnet AS agent-java
+FROM agent AS agent-java
 
 # Re-apply bash strict shell in new stage
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
