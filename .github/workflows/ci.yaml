@@ -43,20 +43,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build base image (load locally)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          target: agent
-          load: true
-          tags: agent-base-image:latest
-          platforms: linux/amd64
-          build-args: |
-            ARG_VSTS_AGENT_VERSION=4.261.0
-          cache-from: type=gha,scope=base
-          cache-to: type=gha,mode=max,scope=base
-
       - name: Build all targets with bake (non-main local build only)
         if: github.ref != 'refs/heads/main'
         uses: docker/bake-action@v6
@@ -65,7 +51,7 @@ jobs:
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
-            BASE_IMAGE=agent-base-image:latest
+            BASE_IMAGE=ubuntu:20.04
 
       - name: Build all targets with bake (main - push to GHCR by digest)
         if: github.ref == 'refs/heads/main'
@@ -80,7 +66,7 @@ jobs:
             PUSH_GHCR=true
             REGISTRY=${{ env.REGISTRY }}
             IMAGE_NAME=${{ env.IMAGE_NAME }}
-            BASE_IMAGE=agent-base-image:latest
+            BASE_IMAGE=ubuntu:20.04
 
       - name: Inspect pushed images
         if: github.ref == 'refs/heads/main'
