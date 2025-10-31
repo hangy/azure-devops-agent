@@ -33,7 +33,7 @@ COPY ./*.sh .
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update && \
-    apt-get install ${APT_FLAGS} ca-certificates curl git unzip xz-utils zip
+    apt-get install ${APT_FLAGS} ca-certificates curl default-jre-headless git unzip xz-utils zip
 
 # Install Compose
 ARG TARGETARCH
