@@ -61,9 +61,6 @@ jobs:
         with:
           source: .
           files: docker-bake.hcl
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
 
       - name: Build all targets with bake (main - push to GHCR by digest)
         if: github.ref == 'refs/heads/main'
@@ -77,11 +74,6 @@ jobs:
           source: .
           files: docker-bake.hcl
           push: true
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
-            *.attest=type=provenance,mode=max
-            *.sbom=generator=syft
 
       - name: Inspect pushed images
         if: github.ref == 'refs/heads/main'

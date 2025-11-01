@@ -48,6 +48,8 @@ target "dotnet" {
   target = "agent-dotnet"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-dotnet"] : []
   output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
+  sbom = "generator=syft"
 }
 
 target "java" {
@@ -55,6 +57,8 @@ target "java" {
   target = "agent-java"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-java"] : []
   output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
+  sbom = "generator=syft"
 }
 
 target "android" {
@@ -62,6 +66,8 @@ target "android" {
   target = "agent-android"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-android"] : []
   output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
+  sbom = "generator=syft"
 }
 
 target "flutter" {
@@ -69,4 +75,6 @@ target "flutter" {
   target = "agent-flutter"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-flutter"] : []
   output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
+  sbom = "generator=syft"
 }
