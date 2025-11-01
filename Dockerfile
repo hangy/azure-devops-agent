@@ -51,7 +51,7 @@ RUN COMPOSE_ARCH="${TARGETARCH}"; \
 
 # Install Kustomize
 ARG KUSTOMIZE_VERSION=5.7.1
-ARG KUSTOMIZE_SHA256=""
+ARG KUSTOMIZE_SHA256="4704f8b47582c1c52bf76a50b37178f7f7de17f892713794a8bf44b01b50e0ce"
 RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     case "${TARGETARCH}" in \
         amd64) KUSTOMIZE_ARCH="amd64" ;; \
@@ -75,8 +75,8 @@ FROM agent AS agent-dotnet
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 # Add .NET SDK
-ARG DOTNET_VERSION=9.0.101
-ARG DOTNET_SHA512=""
+ARG DOTNET_VERSION=10.0.100-rc.2.25502.107
+ARG DOTNET_SHA512="1200ff33d7c2a834499590e05f46c065d0f7dc1f7520f35403b5d4fc1fb00bddfb7c4aae230280e8dc6890fe5fc5ca738dea4789056614ed02a84d1e86d068e9"
 RUN DOTNET_ARCH="${TARGETARCH}"; \
     case "${TARGETARCH}" in \
         amd64) DOTNET_ARCH="x64" ;; \
@@ -138,8 +138,7 @@ ARG ANDROID_BUILD_TOOLS=36.0.0
 ARG ANDROID_SDK_TOOLS=13114758
 ARG NDK_VERSION=29.0.14206865
 ARG CMAKE_VERSION=4.1.2
-ARG ANDROID_SDK_ZIP_SHA256=""
-ARG ANDROID_NDK_SHA256="" # placeholder; SDK manager handles NDK integrity
+ARG ANDROID_SDK_ZIP_SHA256="7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1cdcb1e15317ee"
 
 RUN curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip" -o android-sdk.zip && \
     if [ -n "${ANDROID_SDK_ZIP_SHA256}" ]; then echo "${ANDROID_SDK_ZIP_SHA256}  android-sdk.zip" | sha256sum -c -; fi && \
@@ -168,7 +167,7 @@ FROM agent-android AS agent-flutter
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 ARG FLUTTER_VERSION=3.35.7
-ARG FLUTTER_TAR_SHA256=""
+ARG FLUTTER_TAR_SHA256="146df531f9ac6a11a918013c1a70faafc053d4811c8cb69a413fd70748d51c3d"
 
 USER root
 
