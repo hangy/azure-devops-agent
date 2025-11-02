@@ -145,11 +145,24 @@ jobs:
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             OUT=sbom/${TARGET}-sbom.json
             echo "Extracting SBOM for $REF"
-            docker buildx imagetools inspect "$REF" --format '{{ json .SBOM.SPDX }}' > "$OUT" || {
+            PREDICATE=$(docker buildx imagetools inspect "$REF" --format '{{ json .SBOM.SPDX }}') || {
               echo "No SPDX SBOM data available for $REF" >&2
-              rm -f "$OUT"
               continue
             }
+            # Wrap predicate in minimal SPDX document envelope
+            echo "$PREDICATE" | jq '{
+              spdxVersion: "SPDX-2.3",
+              dataLicense: "MIT",
+              SPDXID: "SPDXRef-DOCUMENT",
+              name: "'"$TARGET"'-sbom",
+              documentNamespace: "'"$REF"'",
+              creationInfo: {
+                created: (now | strftime("%Y-%m-%dT%H:%M:%SZ")),
+                creators: ["Tool: buildkit-syft"]
+              },
+              packages: .packages,
+              relationships: .relationships
+            }' > "$OUT"
             echo "SBOM written to $OUT"
           done
 
@@ -169,8 +182,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: advanced-security/spdx-dependency-submission-action@v0.1.1
         with:
-          filePath: "sbom/"
-          filePattern: "*-sbom.json"
+          filePath: sbom/
 
       - name: Upload SBOM artifacts
         if: github.ref == 'refs/heads/main'
