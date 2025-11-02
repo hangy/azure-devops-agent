@@ -17,7 +17,7 @@ variable "PUSH_GHCR" {
   default = false
 }
 variable "SYFT_IMAGE" {
-  default = "docker-image://ghcr.io/anchore/syft:v1.36.0-nonroot"
+  default = "ghcr.io/anchore/syft:v1.36.0-nonroot"
 }
 group "default" {
   targets = ["dotnet", "java", "android", "flutter"]
