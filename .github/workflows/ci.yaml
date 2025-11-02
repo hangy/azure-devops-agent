@@ -143,45 +143,35 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p sbom
-          MISSING=0
           for TARGET in dotnet java android flutter; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
             OUT=sbom/${TARGET}-sbom.json
-            echo "Attempting to download SBOM for $REF@$DIGEST"
-            if cosign download sbom "$REF@$DIGEST" > "$OUT" 2>/dev/null; then
-              echo "SBOM downloaded to $OUT"
-            else
-              echo "No SBOM attestation found for $REF (BuildKit docker exporter limitation or feature unsupported)." >&2
-              MISSING=$((MISSING+1))
-              rm -f "$OUT"
-            fi
+            echo "Downloading SBOM for $REF@$DIGEST"
+            cosign download sbom "$REF@$DIGEST" > "$OUT"
+            echo "SBOM written to $OUT"
           done
-          if [ $MISSING -eq 4 ]; then
-            echo "No SBOMs were downloadable; failing so this is visible." >&2
-            exit 1
-          fi
 
-      - name: Sign SBOM attestations (keyless)
+      - name: Sign downloaded SBOM attestations (keyless)
         if: github.ref == 'refs/heads/main'
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           set -euo pipefail
-            for TARGET in dotnet java android flutter; do
-              REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
-              DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
-              SBOM=sbom/${TARGET}-sbom.json
-              [ -f "$SBOM" ] || { echo "Skipping $TARGET (no SBOM file)"; continue; }
-              # Detect format for predicate type
-              if grep -q '"spdxVersion"' "$SBOM"; then
-                TYPE=spdxjson
-              else
-                TYPE=cyclonedx
-              fi
-              echo "Attesting SBOM for $REF@$DIGEST as type=$TYPE"
-              cosign attest --predicate "$SBOM" --type "$TYPE" "$REF@$DIGEST" --yes
-            done
+          for TARGET in dotnet java android flutter; do
+            REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
+            DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
+            SBOM=sbom/${TARGET}-sbom.json
+            [ -f "$SBOM" ] || { echo "Skipping $TARGET (no SBOM file)"; continue; }
+            # Detect format for predicate type
+            if grep -q '"spdxVersion"' "$SBOM"; then
+              TYPE=spdxjson
+            else
+              TYPE=cyclonedx
+            fi
+            echo "Re-attesting SBOM for $REF@$DIGEST as type=$TYPE"
+            cosign attest --predicate "$SBOM" --type "$TYPE" "$REF@$DIGEST" --yes
+          done
 
       - name: Submit dependencies to GitHub Dependency Graph
         if: github.ref == 'refs/heads/main'
