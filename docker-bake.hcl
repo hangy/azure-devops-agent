@@ -26,7 +26,8 @@ target "base" {
   context = "azure-devops-agent-on-kubernetes/src"
   dockerfile = "../Dockerfile"
   platforms = PLATFORMS
-  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  # Internal base image does not need canonical digest-only push; build graph consumers use target:base.
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
 }
 
 target "common" {
@@ -47,7 +48,8 @@ target "dotnet" {
   inherits = ["common"]
   target = "agent-dotnet"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-dotnet"] : []
-  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  # Push by tag; digest will still be available for signing/inspection. push-by-digest removed due to GHCR incompatibility with tagged digest-only push.
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
   sbom = "generator=syft"
 }
@@ -56,7 +58,7 @@ target "java" {
   inherits = ["common"]
   target = "agent-java"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-java"] : []
-  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
   sbom = "generator=syft"
 }
@@ -65,7 +67,7 @@ target "android" {
   inherits = ["common"]
   target = "agent-android"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-android"] : []
-  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
   sbom = "generator=syft"
 }
@@ -74,7 +76,7 @@ target "flutter" {
   inherits = ["common"]
   target = "agent-flutter"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-flutter"] : []
-  output = PUSH_GHCR ? ["type=image,push-by-digest=true,name-canonical=true,push=true"] : ["type=docker"]
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
   sbom = "generator=syft"
 }
