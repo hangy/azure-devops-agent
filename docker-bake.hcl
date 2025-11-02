@@ -16,6 +16,9 @@ variable "PLATFORMS" {
 variable "PUSH_GHCR" {
   default = false
 }
+variable "SYFT_IMAGE" {
+  default = "docker-image://ghcr.io/anchore/syft:v1.36.0-nonroot"
+}
 group "default" {
   targets = ["dotnet", "java", "android", "flutter"]
 }
@@ -53,7 +56,7 @@ target "dotnet" {
   # Produce provenance and SBOM attestations (SBOM requires type=sbom entry rather than legacy sbom directive for cosign download).
   attest = PUSH_GHCR ? [
     "type=provenance,mode=max",
-    "type=sbom,generator=syft"
+    "type=sbom,generator=${SYFT_IMAGE}"
   ] : []
 }
 
@@ -64,7 +67,7 @@ target "java" {
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? [
     "type=provenance,mode=max",
-    "type=sbom,generator=syft"
+    "type=sbom,generator=${SYFT_IMAGE}"
   ] : []
 }
 
@@ -75,7 +78,7 @@ target "android" {
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? [
     "type=provenance,mode=max",
-    "type=sbom,generator=syft"
+    "type=sbom,generator=${SYFT_IMAGE}"
   ] : []
 }
 
@@ -86,6 +89,6 @@ target "flutter" {
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? [
     "type=provenance,mode=max",
-    "type=sbom,generator=syft"
+    "type=sbom,generator=${SYFT_IMAGE}"
   ] : []
 }
