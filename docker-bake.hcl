@@ -18,7 +18,7 @@ variable "PUSH_GHCR" {
 }
 
 group "default" {
-  targets = ["dotnet", "java", "android", "flutter"]
+    targets = ["dotnet", "java", "android"]
 }
 
 # Internal base image target. This produces the richer agent-base-image.
@@ -68,15 +68,6 @@ target "android" {
   inherits = ["common"]
   target = "agent-android"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-android"] : []
-  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
-  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
-  sbom = true
-}
-
-target "flutter" {
-  inherits = ["common"]
-  target = "agent-flutter"
-  tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-flutter"] : []
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
   attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
   sbom = true

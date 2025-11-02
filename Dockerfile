@@ -161,32 +161,3 @@ ENV ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}"
 ENV PATH="${PATH}:$ANDROID_HOME/platform-tools"
 ENV PATH="${PATH}:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_NDK"
 
-FROM agent-android AS agent-flutter
-
-# Re-apply bash strict shell in new stage
-SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
-
-ARG FLUTTER_VERSION=3.35.7
-ARG FLUTTER_TAR_SHA256="146df531f9ac6a11a918013c1a70faafc053d4811c8cb69a413fd70748d51c3d"
-
-USER root
-
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt \
-    apt-get update && \
-    apt-get install ${APT_FLAGS} \
-            lib32z1 \
-            libbz2-1.0:amd64 \
-            libc6:amd64 \
-            libglu1-mesa \
-            libstdc++6:amd64
-
-USER azdouser
-
-RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -o flutter-sdk.tar.xz && \
-    if [ -n "${FLUTTER_TAR_SHA256}" ]; then echo "${FLUTTER_TAR_SHA256}  flutter-sdk.tar.xz" | sha256sum -c -; fi && \
-    tar -xf flutter-sdk.tar.xz -C /home/azdouser && \
-    rm flutter-sdk.tar.xz
-
-ENV FLUTTER_HOME="/home/azdouser/flutter"
-ENV PATH="${PATH}:${FLUTTER_HOME}/bin"

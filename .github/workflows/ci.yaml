@@ -84,7 +84,7 @@ jobs:
       - name: Inspect pushed images
         if: github.ref == 'refs/heads/main'
         run: |
-          for TARGET in dotnet java android flutter; do
+          for TARGET in dotnet java android; do
             echo "=== ${TARGET} ==="
             docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
           done
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           FAILED=0
-          for TARGET in dotnet java android flutter; do
+          for TARGET in dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             echo "Scanning $REF"
             trivy image --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --timeout 10m "$REF" || FAILED=1
@@ -127,7 +127,7 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
-          for TARGET in dotnet java android flutter; do
+          for TARGET in dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
             echo "Signing $REF@$DIGEST"
@@ -141,7 +141,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p sbom
-          for TARGET in dotnet java android flutter; do
+          for TARGET in dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             OUT=sbom/${TARGET}-sbom.json
             echo "Extracting SBOM for $REF"
