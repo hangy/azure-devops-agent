@@ -167,73 +167,10 @@ jobs:
 
       - name: Submit dependencies to GitHub Dependency Graph
         if: github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          python <<'PY'
-          import json, os, datetime, urllib.request, sys
-
-          repo = os.environ['GITHUB_REPOSITORY']
-          owner, name = repo.split('/')
-          token = os.environ['GITHUB_TOKEN']
-
-          INTERESTING_PREFIXES = ('npm/', 'pypi/', 'maven/', 'golang/', 'github/')
-          resolved = []
-
-          def handle_purl(purl: str):
-              if not purl or '@' not in purl or not purl.startswith('pkg:'):
-                  return
-              body = purl[4:]
-              before, _version = body.rsplit('@', 1)
-              if any(before.startswith(pfx) for pfx in INTERESTING_PREFIXES):
-                  resolved.append({'package_url': purl, 'relationship': 'direct'})
-
-          for fn in os.listdir('sbom'):
-              if not fn.endswith('-sbom.json'):
-                  continue
-              path = os.path.join('sbom', fn)
-              try:
-                  with open(path) as f:
-                      data = json.load(f)
-              except Exception as e:
-                  print(f"Skipping {fn}: {e}")
-                  continue
-              if isinstance(data, dict) and 'components' in data:
-                  for comp in data.get('components', []):
-                      handle_purl(comp.get('purl'))
-              if isinstance(data, dict) and 'packages' in data:
-                  for pkg in data.get('packages', []):
-                      for ext in pkg.get('externalRefs', []):
-                          if ext.get('referenceType') == 'purl':
-                              handle_purl(ext.get('referenceLocator'))
-
-          snapshot = {
-              'version': 1,
-              'sha': os.environ.get('GITHUB_SHA'),
-              'ref': os.environ.get('GITHUB_REF'),
-              'job': {'correlator': 'container-sbom', 'id': datetime.datetime.utcnow().isoformat() + 'Z'},
-              'scanner': {'name': 'buildkit-syft', 'version': '(attestation extract)'},
-              'manifests': {'container-sbom': {'resolved': resolved}}
-          }
-
-          req = urllib.request.Request(
-              f'https://api.github.com/repos/{owner}/{name}/dependency-graph/snapshots',
-              data=json.dumps(snapshot).encode(),
-              headers={
-                  'Authorization': f'Bearer {token}',
-                  'Accept': 'application/vnd.github+json',
-                  'Content-Type': 'application/json'
-              }
-          )
-
-          with urllib.request.urlopen(req) as r:
-              body = r.read().decode()
-              print('Dependency submission status', r.status)
-              print(body)
-              if r.status >= 300:
-                  sys.exit(1)
-          PY
+        uses: advanced-security/spdx-dependency-submission-action@5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e
+        with:
+          filePath: "sbom/"
+          filePattern: "*-sbom.json"
 
       - name: Upload SBOM artifacts
         if: github.ref == 'refs/heads/main'
