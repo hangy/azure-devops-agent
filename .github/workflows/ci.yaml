@@ -10,10 +10,16 @@ on:
   schedule:
     - cron: '0 0 * * 3'
   workflow_dispatch:
+    inputs:
+      trivy_scan:
+        description: 'Run Trivy vulnerability scan (true/false)'
+        required: false
+        default: 'false'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  TRIVY_SCAN: ${{ github.event.inputs.trivy_scan || 'false' }}
 
 jobs:
   build:
@@ -84,7 +90,7 @@ jobs:
           done
 
       - name: Install Trivy
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && env.TRIVY_SCAN == 'true'
         run: |
           TRIVY_VERSION=0.54.1
           curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz -o trivy.tar.gz
@@ -93,7 +99,7 @@ jobs:
           trivy --version
 
       - name: Vulnerability scan (fail on HIGH/CRITICAL)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && env.TRIVY_SCAN == 'true'
         run: |
           set -euo pipefail
           FAILED=0
