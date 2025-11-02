@@ -32,8 +32,8 @@ target "base" {
 }
 
 target "common" {
-  context = "."
-  dockerfile = "Dockerfile"
+  context = "src"
+  dockerfile = "../Dockerfile"
   platforms = PLATFORMS
   args = {
     ARG_UBUNTU_BASE_IMAGE = "agent-base-image"
