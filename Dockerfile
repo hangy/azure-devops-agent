@@ -42,7 +42,7 @@ RUN COMPOSE_ARCH="${TARGETARCH}"; \
             amd64) COMPOSE_ARCH="x86_64" ;; \
             arm64) COMPOSE_ARCH="aarch64" ;; \
         esac; \
-        curl -fsSL "https://github.com/docker/compose/releases/download/v2.40.2/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose; \
+        curl -fsSL "https://github.com/docker/compose/releases/download/v5.0.0/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose; \
         if [ -n "${COMPOSE_SHA256}" ]; then \
              echo "${COMPOSE_SHA256}  /usr/local/bin/docker-compose" | sha256sum -c -; \
         fi; \
