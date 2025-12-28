@@ -3,6 +3,7 @@ ARG ARG_UBUNTU_BASE_IMAGE="agent-base-image"
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
+ARG USER_NAME=ubuntu
 
 FROM ${ARG_UBUNTU_BASE_IMAGE} AS agent
 
@@ -15,6 +16,7 @@ ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
 ARG COMPOSE_SHA256=""
 ARG APT_FLAGS="-y --no-install-recommends"
+ARG USER_NAME
 
 LABEL org.opencontainers.image.source="https://github.com/hangy/azure-devops-agent" \
     org.opencontainers.image.revision="${VCS_REF}" \
@@ -66,13 +68,15 @@ RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     chmod +x /usr/local/bin/kustomize; \
     kustomize version
 
-USER azdouser
+USER ${USER_NAME}
 ENTRYPOINT ["./add-certs-and-start.sh"]
 
 FROM agent AS agent-dotnet
 
 # Re-apply bash strict shell in new stage
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ARG USER_NAME
 
 # Add .NET SDK
 ARG DOTNET_VERSION=10.0.101
@@ -86,11 +90,11 @@ RUN DOTNET_ARCH="${TARGETARCH}"; \
     if [ -n "${DOTNET_SHA512}" ]; then \
         echo "${DOTNET_SHA512}  dotnet.tar.gz" | sha512sum -c -; \
     fi; \
-    mkdir -p /home/azdouser/.dotnet; \
-    tar -xzf dotnet.tar.gz -C /home/azdouser/.dotnet; \
+    mkdir -p /home/${USER_NAME}/.dotnet; \
+    tar -xzf dotnet.tar.gz -C /home/${USER_NAME}/.dotnet; \
     rm dotnet.tar.gz
 
-ENV DOTNET_ROOT="/home/azdouser/.dotnet"
+ENV DOTNET_ROOT="/home/${USER_NAME}/.dotnet"
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 ENV DOTNET_NOLOGO=1
@@ -100,6 +104,8 @@ FROM agent AS agent-java
 
 # Re-apply bash strict shell in new stage
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ARG USER_NAME
 
 USER root
 
@@ -125,12 +131,14 @@ ENV GRADLE_HOME=/usr/share/gradle
 ENV M2_HOME=/usr/share/maven
 ENV PATH="${ANT_HOME}/bin:${GRADLE_HOME}/bin:${M2_HOME}/bin:${PATH}"
 
-USER azdouser
+USER ${USER_NAME}
 
 FROM agent-java AS agent-android
 
 # Re-apply bash strict shell in new stage
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ARG USER_NAME
 
 # Android SDK
 ARG ANDROID_COMPILE_SDK=36
@@ -142,19 +150,19 @@ ARG ANDROID_SDK_ZIP_SHA256="7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1c
 
 RUN curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip" -o android-sdk.zip && \
     if [ -n "${ANDROID_SDK_ZIP_SHA256}" ]; then echo "${ANDROID_SDK_ZIP_SHA256}  android-sdk.zip" | sha256sum -c -; fi && \
-    mkdir -p /home/azdouser/android-sdk-linux/cmdline-tools && \
-    unzip -d /home/azdouser/android-sdk-linux/cmdline-tools android-sdk.zip && \
+    mkdir -p /home/${USER_NAME}/android-sdk-linux/cmdline-tools && \
+    unzip -d /home/${USER_NAME}/android-sdk-linux/cmdline-tools android-sdk.zip && \
     rm android-sdk.zip && \
-    mv /home/azdouser/android-sdk-linux/cmdline-tools/cmdline-tools /home/azdouser/android-sdk-linux/cmdline-tools/latest && \
-    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null && \
-    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platform-tools" >/dev/null && \
-    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null && \
-    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}" >/dev/null && \
-    echo y | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "cmake;${CMAKE_VERSION}" >/dev/null && \
-    (yes || true) | /home/azdouser/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --licenses
+    mv /home/${USER_NAME}/android-sdk-linux/cmdline-tools/cmdline-tools /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest && \
+    echo y | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null && \
+    echo y | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platform-tools" >/dev/null && \
+    echo y | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null && \
+    echo y | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}" >/dev/null && \
+    echo y | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "cmake;${CMAKE_VERSION}" >/dev/null && \
+    (yes || true) | /home/${USER_NAME}/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --licenses
 
-ENV ANDROID_SDK_ROOT="/home/azdouser/android-sdk-linux"
-ENV ANDROID_HOME="/home/azdouser/android-sdk-linux"
+ENV ANDROID_SDK_ROOT="/home/${USER_NAME}/android-sdk-linux"
+ENV ANDROID_HOME="/home/${USER_NAME}/android-sdk-linux"
 ENV ANDROID_COMPILE_SDK="${ANDROID_COMPILE_SDK}" ANDROID_BUILD_TOOLS="${ANDROID_BUILD_TOOLS}" ANDROID_SDK_TOOLS="${ANDROID_SDK_TOOLS}" NDK_VERSION="${NDK_VERSION}" CMAKE_VERSION="${CMAKE_VERSION}"
 
 ENV ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}"
