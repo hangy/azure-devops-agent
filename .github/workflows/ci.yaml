@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload SBOM artifacts
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sbom
           path: sbom/
