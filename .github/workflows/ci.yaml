@@ -92,7 +92,7 @@ jobs:
       - name: Install Trivy
         if: github.ref == 'refs/heads/main' && env.TRIVY_SCAN == 'true'
         run: |
-          TRIVY_VERSION=0.68.2
+          TRIVY_VERSION=0.69.1
           curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz -o trivy.tar.gz
           tar -xzf trivy.tar.gz trivy
           sudo mv trivy /usr/local/bin/
