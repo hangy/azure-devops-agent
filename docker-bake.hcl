@@ -18,7 +18,7 @@ variable "PUSH_GHCR" {
 }
 
 group "default" {
-    targets = ["dotnet", "java", "android"]
+    targets = ["agent", "dotnet", "java", "android"]
 }
 
 # Internal base image target. This produces the richer agent-base-image.
@@ -45,6 +45,16 @@ target "common" {
   cache-to = ["type=gha,mode=max"]
 }
 
+target "agent" {
+  inherits = ["common"]
+  target = "agent"
+  tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main"] : []
+  # Push by tag; digest will still be available for signing/inspection. push-by-digest removed due to GHCR incompatibility with tagged digest-only push.
+  output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
+  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
+  sbom = true
+}
+
 target "dotnet" {
   inherits = ["common"]
   target = "agent-dotnet"
@@ -65,7 +75,7 @@ target "java" {
 }
 
 target "android" {
-  inherits = ["common"]
+  inherits = ["java"]
   target = "agent-android"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-android"] : []
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]

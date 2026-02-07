@@ -87,7 +87,7 @@ Preconditions:
 
 If you want stable local tags without pushing:
 
-for TARGET in dotnet java android flutter; do
+for TARGET in agent dotnet java android; do
   IMAGE_ID=$(docker images --filter 'label=org.opencontainers.image.title=Azure DevOps Agent (multi-capability)' --filter "reference=<none>" -q | head -n1)
   docker tag "$IMAGE_ID" "agent-${TARGET}:dev"
 done
