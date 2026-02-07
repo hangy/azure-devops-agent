@@ -39,12 +39,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 # Install Compose
 ARG TARGETARCH
+ARG COMPOSE_VERSION=5.0.2
+ARG COMPOSE_SHA256_AMD64=2d880f723d3da7c779c54fdaea91a842fca8af55d1397f1ed8d7cbab3dd7af67
+ARG COMPOSE_SHA256_ARM64=ac7810e0cd56a5b58576688196fafa843e07e8241fb91018a736d549ea20a3f3
 RUN COMPOSE_ARCH="${TARGETARCH}"; \
         case "${TARGETARCH}" in \
-            amd64) COMPOSE_ARCH="x86_64" ;; \
-            arm64) COMPOSE_ARCH="aarch64" ;; \
+            amd64) COMPOSE_ARCH="x86_64"; COMPOSE_SHA256="${COMPOSE_SHA256_AMD64}" ;; \
+            arm64) COMPOSE_ARCH="aarch64"; COMPOSE_SHA256="${COMPOSE_SHA256_ARM64}" ;; \
         esac; \
-        curl -fsSL "https://github.com/docker/compose/releases/download/v5.0.0/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose; \
+        curl -fsSL "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose; \
         if [ -n "${COMPOSE_SHA256}" ]; then \
              echo "${COMPOSE_SHA256}  /usr/local/bin/docker-compose" | sha256sum -c -; \
         fi; \
