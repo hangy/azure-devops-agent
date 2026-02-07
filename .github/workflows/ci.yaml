@@ -116,7 +116,7 @@ jobs:
       - name: Install Cosign
         if: github.ref == 'refs/heads/main'
         run: |
-          COSIGN_VERSION=v3.0.3
+          COSIGN_VERSION=v3.0.4
           curl -fsSL "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64" -o cosign
           chmod +x cosign
           sudo mv cosign /usr/local/bin/
