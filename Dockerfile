@@ -53,11 +53,12 @@ RUN COMPOSE_ARCH="${TARGETARCH}"; \
 
 # Install Kustomize
 ARG KUSTOMIZE_VERSION=5.8.0
-ARG KUSTOMIZE_SHA256="4dfa8307358dd9284aa4d2b1d5596766a65b93433e8fa3f9f74498941f01c5ef"
+ARG KUSTOMIZE_SHA256_AMD64=4dfa8307358dd9284aa4d2b1d5596766a65b93433e8fa3f9f74498941f01c5ef
+ARG KUSTOMIZE_SHA256_ARM64=sha256:a4f48b4c3d4ca97d748943e19169de85a2e86e80bcc09558603e2aa66fb15ce1
 RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     case "${TARGETARCH}" in \
-        amd64) KUSTOMIZE_ARCH="amd64" ;; \
-        arm64) KUSTOMIZE_ARCH="arm64" ;; \
+        amd64) KUSTOMIZE_ARCH="amd64"; KUSTOMIZE_SHA256="${KUSTOMIZE_SHA256_AMD64}" ;; \
+        arm64) KUSTOMIZE_ARCH="arm64"; KUSTOMIZE_SHA256="${KUSTOMIZE_SHA256_ARM64}" ;; \
     esac; \
     curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_${KUSTOMIZE_ARCH}.tar.gz" -o kustomize.tar.gz; \
     if [ -n "${KUSTOMIZE_SHA256}" ]; then \
