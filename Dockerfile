@@ -91,7 +91,7 @@ RUN DOTNET_ARCH="${TARGETARCH}"; \
         amd64) DOTNET_ARCH="x64"; DOTNET_SHA512="${DOTNET_SHA512_AMD64}" ;; \
         arm64) DOTNET_ARCH="arm64"; DOTNET_SHA512="${DOTNET_SHA512_ARM64}" ;; \
     esac; \
-    curl -fsSL "https://dotnetcli.azureedge.net/dotnet/Sdk/${DOTNET_VERSION}/dotnet-sdk-${DOTNET_VERSION}-linux-${DOTNET_ARCH}.tar.gz" -o dotnet.tar.gz; \
+    curl -fsSL "https://builds.dotnet.microsoft.com/dotnet/Sdk/${DOTNET_VERSION}/dotnet-sdk-${DOTNET_VERSION}-linux-${DOTNET_ARCH}.tar.gz" -o dotnet.tar.gz; \
     if [ -n "${DOTNET_SHA512}" ]; then \
         echo "${DOTNET_SHA512}  dotnet.tar.gz" | sha512sum -c -; \
     fi; \
