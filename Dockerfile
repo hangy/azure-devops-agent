@@ -72,6 +72,14 @@ RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     chmod +x /usr/local/bin/kustomize; \
     kustomize version
 
+# Add Java Runtime (Latest LTS)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
+    apt-get install ${APT_FLAGS} \
+            openjdk-25-jre-headless && \
+        update-java-alternatives -a || true
+
 USER ${USER_NAME}
 ENTRYPOINT ["./add-certs-and-start.sh"]
 
@@ -114,7 +122,7 @@ ARG USER_NAME
 
 USER root
 
-# Add Java
+# Add Java Development Kits + Common build tools (LTS)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update && \
