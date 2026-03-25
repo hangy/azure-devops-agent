@@ -122,7 +122,7 @@ ARG USER_NAME
 
 USER root
 
-# Add Java Development Kits + Common built tools (LTS)
+# Add Java Development Kits + Common build tools (LTS)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update && \
