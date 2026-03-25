@@ -124,13 +124,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             maven \
             openjdk-17-jdk-headless \
             openjdk-21-jdk-headless \
+            openjdk-25-jdk-headless \
             openjdk-8-jdk-headless && \
         update-java-alternatives -a || true
 
 ENV JAVA_HOME_8_X64=/usr/lib/jvm/java-8-openjdk-amd64
 ENV JAVA_HOME_17_X64=/usr/lib/jvm/java-17-openjdk-amd64
 ENV JAVA_HOME_21_X64=/usr/lib/jvm/java-21-openjdk-amd64
-ENV JAVA_HOME=${JAVA_HOME_21_X64}
+ENV JAVA_HOME_25_X64=/usr/lib/jvm/java-25-openjdk-amd64
+ENV JAVA_HOME=${JAVA_HOME_25_X64}
 ENV ANT_HOME=/usr/share/ant
 ENV GRADLE_HOME=/usr/share/gradle
 ENV M2_HOME=/usr/share/maven
