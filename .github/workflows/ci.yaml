@@ -71,7 +71,7 @@ jobs:
 
       - name: Build all targets with bake (non-main local build only)
         if: github.ref != 'refs/heads/main'
-        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6.10.0
+        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         with:
           source: .
           files: docker-bake.hcl
@@ -79,7 +79,7 @@ jobs:
       - name: Build all targets with bake (main - push to GHCR by digest)
         if: github.ref == 'refs/heads/main'
         id: bake
-        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6.10.0
+        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         env:
           PUSH_GHCR: true
           REGISTRY: ${{ env.REGISTRY }}
