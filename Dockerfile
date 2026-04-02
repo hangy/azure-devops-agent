@@ -23,7 +23,7 @@ LABEL org.opencontainers.image.source="https://github.com/hangy/azure-devops-age
     org.opencontainers.image.created="${BUILD_DATE}" \
     org.opencontainers.image.version="${VSTS_AGENT_VERSION}" \
     org.opencontainers.image.title="Azure DevOps Agent (multi-capability)" \
-    org.opencontainers.image.description="Azure DevOps self-hosted agent with Docker, Kustomize, .NET, Java, Android, and Flutter toolchains." \
+    org.opencontainers.image.description="Azure DevOps self-hosted agent with Docker, cosign, Kustomize, .NET, Java, and Android toolchains." \
     org.opencontainers.image.licenses="MIT"
 
 USER root
@@ -71,6 +71,22 @@ RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     rm kustomize.tar.gz; \
     chmod +x /usr/local/bin/kustomize; \
     kustomize version
+
+# Install cosign
+ARG COSIGN_VERSION=3.0.5
+ARG COSIGN_SHA256_AMD64=db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2
+ARG COSIGN_SHA256_ARM64=d098f3168ae4b3aa70b4ca78947329b953272b487727d1722cb3cb098a1a20ab
+RUN COSIGN_ARCH="${TARGETARCH}"; \
+    case "${TARGETARCH}" in \
+        amd64) COSIGN_ARCH="amd64"; COSIGN_SHA256="${COSIGN_SHA256_AMD64}" ;; \
+        arm64) COSIGN_ARCH="arm64"; COSIGN_SHA256="${COSIGN_SHA256_ARM64}" ;; \
+    esac; \
+    curl -fsSL "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-${COSIGN_ARCH}" -o /usr/local/bin/cosign; \
+    if [ -n "${COSIGN_SHA256}" ]; then \
+        echo "${COSIGN_SHA256}  /usr/local/bin/cosign" | sha256sum -c -; \
+    fi; \
+    chmod +x /usr/local/bin/cosign; \
+    cosign version
 
 # Add Java Runtime (Latest LTS)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
