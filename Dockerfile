@@ -4,7 +4,6 @@ ARG VCS_REF
 ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
 ARG USER_NAME=ubuntu
-ARG TARGETARCH
 
 FROM ${ARG_UBUNTU_BASE_IMAGE} AS base
 
@@ -17,6 +16,7 @@ ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
 ARG APT_FLAGS="-y --no-install-recommends"
 ARG USER_NAME
+ARG TARGETARCH
 
 LABEL org.opencontainers.image.source="https://github.com/hangy/azure-devops-agent" \
     org.opencontainers.image.revision="${VCS_REF}" \
