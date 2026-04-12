@@ -1,0 +1,9 @@
+{
+  "name": "kustomize",
+  "version": "5.8.1",
+  "sha256": {
+    "amd64": "029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d",
+    "arm64": "0953ea3e476f66d6ddfcd911d750f5167b9365aa9491b2326398e289fef2c142"
+  },
+  "download_url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv{version}/kustomize_v{version}_linux_{arch}.tar.gz"
+}

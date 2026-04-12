@@ -1,0 +1,13 @@
+{
+  "name": "dotnet-sdk",
+  "version": "10.0.201",
+  "download_arch": {
+    "amd64": "x64",
+    "arm64": "arm64"
+  },
+  "sha512": {
+    "amd64": "a33354e3291aa21ea5e1983733f001d45264c31ee3c0dc4a85509d4cb6d4896cfec57fd2143a7b54c93bc42b328e059b16802b4085257a367ef2652f1c8fa424",
+    "arm64": "98015bc0decaa0aba0cd61a82d5b9e2df882c1406dcd5574de639cbd2e0764066dc5488dde8f704351c5420ae730a2a39f7b7e789f280f1fb42b90871dda3ecb"
+  },
+  "download_url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/{version}/dotnet-sdk-{version}-linux-{arch}.tar.gz"
+}

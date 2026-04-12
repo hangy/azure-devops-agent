@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["dockerfile", "custom.jsonata"],
+  "ignorePaths": [
+    "azure-devops-agent-on-kubernetes/**"
+  ],
+  "customManagers": [
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": ["src/dependencies/compose.json"],
+      "matchStrings": ["{\"depName\": 'docker/compose', \"currentValue\": version}"],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": ["src/dependencies/cosign.json"],
+      "matchStrings": ["{\"depName\": 'sigstore/cosign', \"currentValue\": version}"],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": ["src/dependencies/dotnet-sdk.json"],
+      "matchStrings": ["{\"depName\": 'dotnet/sdk', \"currentValue\": version}"],
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": ["src/dependencies/kustomize.json"],
+      "matchStrings": ["{\"depName\": 'kubernetes-sigs/kustomize', \"currentValue\": version}"],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "versioningTemplate": "semver"
+    }
+  ]
+}
