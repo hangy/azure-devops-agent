@@ -1,6 +1,6 @@
 {
   "name": "docker-compose",
-  "version": "5.1.0",
+  "version": "5.1.2",
   "download_arch": {
     "amd64": "x86_64",
     "arm64": "aarch64"
