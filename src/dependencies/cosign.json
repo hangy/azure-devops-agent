@@ -1,9 +1,9 @@
 {
   "name": "cosign",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "sha256": {
-    "amd64": "db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2",
-    "arm64": "d098f3168ae4b3aa70b4ca78947329b953272b487727d1722cb3cb098a1a20ab"
+    "amd64": "c956e5dfcac53d52bcf058360d579472f0c1d2d9b69f55209e256fe7783f4c74",
+    "arm64": "bedac92e8c3729864e13d4a17048007cfafa79d5deca993a43a90ffe018ef2b8"
   },
   "download_url": "https://github.com/sigstore/cosign/releases/download/v{version}/cosign-linux-{arch}"
 }
