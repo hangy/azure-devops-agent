@@ -37,40 +37,28 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get install ${APT_FLAGS} ca-certificates curl default-jre-headless git unzip xz-utils zip
 
-
 FROM base AS download-compose
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
-# Install Compose
-ARG COMPOSE_VERSION=5.1.0
-ARG COMPOSE_SHA256_AMD64=5633cb21e06a7c88c7ca48a9334d3d0f7f892e9605ae9e9a45f9a095d4ffceb8
-ARG COMPOSE_SHA256_ARM64=da671ae15b4d7c68c38b572a2e9ceba89f09657d2682c2d2e34ad6db828e7442
+COPY dependencies/compose.json /tmp/compose.json
 RUN COMPOSE_ARCH="${TARGETARCH}"; \
-        case "${TARGETARCH}" in \
-            amd64) COMPOSE_ARCH="x86_64"; COMPOSE_SHA256="${COMPOSE_SHA256_AMD64}" ;; \
-            arm64) COMPOSE_ARCH="aarch64"; COMPOSE_SHA256="${COMPOSE_SHA256_ARM64}" ;; \
-        esac; \
-        curl -fsSL "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose; \
-        if [ -n "${COMPOSE_SHA256}" ]; then \
-             echo "${COMPOSE_SHA256}  /usr/local/bin/docker-compose" | sha256sum -c -; \
-        fi; \
-        chmod +x /usr/local/bin/docker-compose; \
-        /usr/local/bin/docker-compose --version
+    COMPOSE_RELEASE_ARCH=$(jq -r ".download_arch[\"${COMPOSE_ARCH}\"] // \"${COMPOSE_ARCH}\"" /tmp/compose.json); \
+    COMPOSE_VERSION=$(jq -r '.version' /tmp/compose.json); \
+    COMPOSE_SHA256=$(jq -r ".sha256[\"${COMPOSE_ARCH}\"]" /tmp/compose.json); \
+    DOWNLOAD_URL=$(jq -r '.download_url' /tmp/compose.json | sed "s/{version}/${COMPOSE_VERSION}/g" | sed "s/{arch}/${COMPOSE_RELEASE_ARCH}/g"); \
+    curl -fsSL "${DOWNLOAD_URL}" -o /usr/local/bin/docker-compose; \
+    echo "${COMPOSE_SHA256}  /usr/local/bin/docker-compose" | sha256sum -c -; \
+    chmod +x /usr/local/bin/docker-compose; \
+    /usr/local/bin/docker-compose --version
 
 FROM base AS download-kustomize
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
-# Install Kustomize
-ARG KUSTOMIZE_VERSION=5.8.1
-ARG KUSTOMIZE_SHA256_AMD64=029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d
-ARG KUSTOMIZE_SHA256_ARM64=0953ea3e476f66d6ddfcd911d750f5167b9365aa9491b2326398e289fef2c142
+COPY --link dependencies/kustomize.json /tmp/kustomize.json
 RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
-    case "${TARGETARCH}" in \
-        amd64) KUSTOMIZE_ARCH="amd64"; KUSTOMIZE_SHA256="${KUSTOMIZE_SHA256_AMD64}" ;; \
-        arm64) KUSTOMIZE_ARCH="arm64"; KUSTOMIZE_SHA256="${KUSTOMIZE_SHA256_ARM64}" ;; \
-    esac; \
-    curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_${KUSTOMIZE_ARCH}.tar.gz" -o kustomize.tar.gz; \
-    if [ -n "${KUSTOMIZE_SHA256}" ]; then \
-        echo "${KUSTOMIZE_SHA256}  kustomize.tar.gz" | sha256sum -c -; \
-    fi; \
+    KUSTOMIZE_VERSION=$(jq -r '.version' /tmp/kustomize.json); \
+    KUSTOMIZE_SHA256=$(jq -r ".sha256[\"${KUSTOMIZE_ARCH}\"]" /tmp/kustomize.json); \
+    DOWNLOAD_URL=$(jq -r '.download_url' /tmp/kustomize.json | sed "s/{version}/${KUSTOMIZE_VERSION}/g" | sed "s/{arch}/${KUSTOMIZE_ARCH}/g"); \
+    curl -fsSL "${DOWNLOAD_URL}" -o kustomize.tar.gz; \
+    echo "${KUSTOMIZE_SHA256}  kustomize.tar.gz" | sha256sum -c -; \
     tar -xzf kustomize.tar.gz -C /usr/local/bin; \
     rm kustomize.tar.gz; \
     chmod +x /usr/local/bin/kustomize; \
@@ -78,19 +66,13 @@ RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
 
 FROM base AS download-cosign
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
-# Install cosign
-ARG COSIGN_VERSION=3.0.5
-ARG COSIGN_SHA256_AMD64=db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2
-ARG COSIGN_SHA256_ARM64=d098f3168ae4b3aa70b4ca78947329b953272b487727d1722cb3cb098a1a20ab
+COPY dependencies/cosign.json /tmp/cosign.json
 RUN COSIGN_ARCH="${TARGETARCH}"; \
-    case "${TARGETARCH}" in \
-        amd64) COSIGN_ARCH="amd64"; COSIGN_SHA256="${COSIGN_SHA256_AMD64}" ;; \
-        arm64) COSIGN_ARCH="arm64"; COSIGN_SHA256="${COSIGN_SHA256_ARM64}" ;; \
-    esac; \
-    curl -fsSL "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-${COSIGN_ARCH}" -o /usr/local/bin/cosign; \
-    if [ -n "${COSIGN_SHA256}" ]; then \
-        echo "${COSIGN_SHA256}  /usr/local/bin/cosign" | sha256sum -c -; \
-    fi; \
+    COSIGN_VERSION=$(jq -r '.version' /tmp/cosign.json); \
+    COSIGN_SHA256=$(jq -r ".sha256[\"${COSIGN_ARCH}\"]" /tmp/cosign.json); \
+    DOWNLOAD_URL=$(jq -r '.download_url' /tmp/cosign.json | sed "s/{version}/${COSIGN_VERSION}/g" | sed "s/{arch}/${COSIGN_ARCH}/g"); \
+    curl -fsSL "${DOWNLOAD_URL}" -o /usr/local/bin/cosign; \
+    echo "${COSIGN_SHA256}  /usr/local/bin/cosign" | sha256sum -c -; \
     chmod +x /usr/local/bin/cosign; \
     cosign version
 
@@ -119,15 +101,13 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG USER_NAME
 
 # Add .NET SDK
-ARG DOTNET_VERSION=10.0.201
-ARG DOTNET_SHA512_AMD64=a33354e3291aa21ea5e1983733f001d45264c31ee3c0dc4a85509d4cb6d4896cfec57fd2143a7b54c93bc42b328e059b16802b4085257a367ef2652f1c8fa424
-ARG DOTNET_SHA512_ARM64=98015bc0decaa0aba0cd61a82d5b9e2df882c1406dcd5574de639cbd2e0764066dc5488dde8f704351c5420ae730a2a39f7b7e789f280f1fb42b90871dda3ecb
+COPY dependencies/dotnet-sdk.json /tmp/dotnet-sdk.json
 RUN DOTNET_ARCH="${TARGETARCH}"; \
-    case "${TARGETARCH}" in \
-        amd64) DOTNET_ARCH="x64"; DOTNET_SHA512="${DOTNET_SHA512_AMD64}" ;; \
-        arm64) DOTNET_ARCH="arm64"; DOTNET_SHA512="${DOTNET_SHA512_ARM64}" ;; \
-    esac; \
-    curl -fsSL "https://builds.dotnet.microsoft.com/dotnet/Sdk/${DOTNET_VERSION}/dotnet-sdk-${DOTNET_VERSION}-linux-${DOTNET_ARCH}.tar.gz" -o dotnet.tar.gz; \
+    DOTNET_RELEASE_ARCH=$(jq -r ".download_arch[\"${DOTNET_ARCH}\"] // \"${DOTNET_ARCH}\"" /tmp/dotnet-sdk.json); \
+    DOTNET_VERSION=$(jq -r '.version' /tmp/dotnet-sdk.json); \
+    DOTNET_SHA512=$(jq -r ".sha512[\"${DOTNET_ARCH}\"]" /tmp/dotnet-sdk.json); \
+    DOWNLOAD_URL=$(jq -r '.download_url' /tmp/dotnet-sdk.json | sed "s/{version}/${DOTNET_VERSION}/g" | sed "s/{arch}/${DOTNET_RELEASE_ARCH}/g"); \
+    curl -fsSL "${DOWNLOAD_URL}" -o dotnet.tar.gz; \
     if [ -n "${DOTNET_SHA512}" ]; then \
         echo "${DOTNET_SHA512}  dotnet.tar.gz" | sha512sum -c -; \
     fi; \
@@ -183,16 +163,19 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 ARG USER_NAME
 
-# Android SDK
+# Android SDK (ARGs still needed for sdkmanager selections, only cmdline-tools ZIP comes from JSON)
 ARG ANDROID_COMPILE_SDK=36
 ARG ANDROID_BUILD_TOOLS=36.0.0
-ARG ANDROID_SDK_TOOLS=13114758
 ARG NDK_VERSION=29.0.14206865
 ARG CMAKE_VERSION=4.1.2
-ARG ANDROID_SDK_ZIP_SHA256="7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1cdcb1e15317ee"
 
-RUN curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip" -o android-sdk.zip && \
-    if [ -n "${ANDROID_SDK_ZIP_SHA256}" ]; then echo "${ANDROID_SDK_ZIP_SHA256}  android-sdk.zip" | sha256sum -c -; fi && \
+COPY dependencies/android-sdk.json /tmp/android-sdk.json
+RUN SDK_ARCH="${TARGETARCH}"; \
+    SDK_VERSION=$(jq -r '.version' /tmp/android-sdk.json); \
+    SDK_SHA256=$(jq -r ".sha256[\"${SDK_ARCH}\"]" /tmp/android-sdk.json); \
+    DOWNLOAD_URL=$(jq -r '.download_url' /tmp/android-sdk.json | sed "s/{version}/${SDK_VERSION}/g"); \
+    curl -fsSL "${DOWNLOAD_URL}" -o android-sdk.zip; \
+    if [ -n "${SDK_SHA256}" ] && [ "${SDK_SHA256}" != "null" ]; then echo "${SDK_SHA256}  android-sdk.zip" | sha256sum -c -; fi; \
     mkdir -p /home/${USER_NAME}/android-sdk-linux/cmdline-tools && \
     unzip -d /home/${USER_NAME}/android-sdk-linux/cmdline-tools android-sdk.zip && \
     rm android-sdk.zip && \
@@ -206,7 +189,7 @@ RUN curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-
 
 ENV ANDROID_SDK_ROOT="/home/${USER_NAME}/android-sdk-linux"
 ENV ANDROID_HOME="/home/${USER_NAME}/android-sdk-linux"
-ENV ANDROID_COMPILE_SDK="${ANDROID_COMPILE_SDK}" ANDROID_BUILD_TOOLS="${ANDROID_BUILD_TOOLS}" ANDROID_SDK_TOOLS="${ANDROID_SDK_TOOLS}" NDK_VERSION="${NDK_VERSION}" CMAKE_VERSION="${CMAKE_VERSION}"
+ENV ANDROID_COMPILE_SDK="${ANDROID_COMPILE_SDK}" ANDROID_BUILD_TOOLS="${ANDROID_BUILD_TOOLS}" NDK_VERSION="${NDK_VERSION}" CMAKE_VERSION="${CMAKE_VERSION}"
 
 ENV ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}"
 ENV PATH="${PATH}:$ANDROID_HOME/platform-tools"

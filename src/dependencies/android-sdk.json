@@ -1,0 +1,8 @@
+{
+  "name": "android-sdk",
+  "version": "13114758",
+  "sha256": {
+    "amd64": "7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1cdcb1e15317ee"
+  },
+  "download_url": "https://dl.google.com/android/repository/commandlinetools-linux-{version}_latest.zip"
+}

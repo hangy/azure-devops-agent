@@ -1,0 +1,13 @@
+{
+  "name": "docker-compose",
+  "version": "5.1.0",
+  "download_arch": {
+    "amd64": "x86_64",
+    "arm64": "aarch64"
+  },
+  "sha256": {
+    "amd64": "5633cb21e06a7c88c7ca48a9334d3d0f7f892e9605ae9e9a45f9a095d4ffceb8",
+    "arm64": "da671ae15b4d7c68c38b572a2e9ceba89f09657d2682c2d2e34ad6db828e7442"
+  },
+  "download_url": "https://github.com/docker/compose/releases/download/v{version}/docker-compose-linux-{arch}"
+}
