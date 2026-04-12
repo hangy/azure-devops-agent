@@ -32,7 +32,7 @@
       "fileFormat": "json",
       "managerFilePatterns": ["src/dependencies/dotnet-sdk.json"],
       "matchStrings": ["{\"depName\": 'dotnet/sdk', \"currentValue\": version}"],
-      "datasourceTemplate": "github-tags",
+      "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v?(?<version>.*)$",
       "versioningTemplate": "semver"
     },
