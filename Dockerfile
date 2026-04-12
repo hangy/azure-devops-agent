@@ -5,7 +5,7 @@ ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
 ARG USER_NAME=ubuntu
 
-FROM ${ARG_UBUNTU_BASE_IMAGE} AS agent
+FROM ${ARG_UBUNTU_BASE_IMAGE} AS base
 
 # Use bash with strict options for all subsequent RUN commands in this stage
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
@@ -14,7 +14,6 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VSTS_AGENT_VERSION
-ARG COMPOSE_SHA256=""
 ARG APT_FLAGS="-y --no-install-recommends"
 ARG USER_NAME
 
@@ -37,6 +36,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get install ${APT_FLAGS} ca-certificates curl default-jre-headless git unzip xz-utils zip
 
+
+FROM base AS download-compose
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # Install Compose
 ARG TARGETARCH
 ARG COMPOSE_VERSION=5.1.0
@@ -54,6 +56,8 @@ RUN COMPOSE_ARCH="${TARGETARCH}"; \
         chmod +x /usr/local/bin/docker-compose; \
         /usr/local/bin/docker-compose --version
 
+FROM base AS download-kustomize
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # Install Kustomize
 ARG KUSTOMIZE_VERSION=5.8.1
 ARG KUSTOMIZE_SHA256_AMD64=029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d
@@ -72,6 +76,8 @@ RUN KUSTOMIZE_ARCH="${TARGETARCH}"; \
     chmod +x /usr/local/bin/kustomize; \
     kustomize version
 
+FROM base AS download-cosign
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # Install cosign
 ARG COSIGN_VERSION=3.0.5
 ARG COSIGN_SHA256_AMD64=db15cc99e6e4837daabab023742aaddc3841ce57f193d11b7c3e06c8003642b2
@@ -88,6 +94,8 @@ RUN COSIGN_ARCH="${TARGETARCH}"; \
     chmod +x /usr/local/bin/cosign; \
     cosign version
 
+FROM base AS agent
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # Add Java Runtime (Latest LTS)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
@@ -95,6 +103,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install ${APT_FLAGS} \
             openjdk-25-jre-headless && \
         update-java-alternatives -a || true
+
+COPY --from=download-compose /usr/local/bin/docker-compose /usr/local/bin/docker-compose
+COPY --from=download-kustomize /usr/local/bin/kustomize /usr/local/bin/kustomize
+COPY --from=download-cosign /usr/local/bin/cosign /usr/local/bin/cosign
 
 USER ${USER_NAME}
 ENTRYPOINT ["./add-certs-and-start.sh"]
