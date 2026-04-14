@@ -5,9 +5,6 @@
   "git-submodules": {
     "enabled": true
   },
-  "ignorePaths": [
-    "azure-devops-agent-on-kubernetes/**"
-  ],
   "customManagers": [
     {
       "customType": "jsonata",
