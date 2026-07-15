@@ -1,6 +1,6 @@
 {
   "name": "dotnet-sdk",
-  "version": "10.0.301",
+  "version": "10.0.302",
   "download_arch": {
     "amd64": "x64",
     "arm64": "arm64"
