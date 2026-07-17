@@ -1,6 +1,6 @@
 {
   "name": "cosign",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "sha256": {
     "amd64": "ae1ecd212663f3693ad9edf8b1a183900c9a52d3155ba6e354237f9a0f6463fc",
     "arm64": "2ec865872e331c32fd12b08dae15332d3f92c0aa029219589684a4903ca85d11"
