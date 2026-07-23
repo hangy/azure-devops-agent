@@ -18,7 +18,7 @@ Available image variants
 Included toolchains by variant (major versions only)
 
 - `plain` (minimal agent)
-  - Azure DevOps agent: 4.x
+  - Azure DevOps agent: 5.x
   - cosign: 3.x
   - docker-compose: 5.x
   - kustomize: 5.x
