@@ -6,8 +6,8 @@
     "arm64": "aarch64"
   },
   "sha256": {
-    "amd64": "837fd1d35bf6a494f41b5b5988269a7be79de337cf1a1a6ff0e45ab51bb4e9be",
-    "arm64": "fc5d1371f1ec7987e703da94ede49af3fbfb240b83f22991a98511de7bc4b93b"
+    "amd64": "c57ab918abd5b05ca7e7d0f275875dd1330a695074f309dc9eab1b49efafcd4b",
+    "arm64": "ff42489f5a9b879d5d117c5ffea6defc27390b3286da8ad52cbc9c6ab5df590e"
   },
   "download_url": "https://github.com/docker/compose/releases/download/v{version}/docker-compose-linux-{arch}"
 }
