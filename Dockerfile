@@ -31,6 +31,17 @@ USER root
 WORKDIR /azp
 COPY ./*.sh .
 
+# The base image (built from the azure-devops-agent-on-kubernetes submodule)
+# pins the Ubuntu archive via /etc/apt/apt.conf.d/50snapshot, and every apt
+# operation below inherits that pin automatically — no snapshot ARG needed
+# here, so the two can never drift apart. Just assert the pin exists (and is
+# well-formed) so that building against a base image without one fails fast
+# instead of producing a silently unpinned image.
+RUN BASE_SNAPSHOT=$(sed -n 's/^APT::Snapshot "\(.*\)";$/\1/p' /etc/apt/apt.conf.d/50snapshot 2>/dev/null || true); \
+    if [ -z "${BASE_SNAPSHOT}" ]; then echo "error: base image provides no APT::Snapshot pin in /etc/apt/apt.conf.d/50snapshot" >&2; exit 1; fi; \
+    if ! [[ "${BASE_SNAPSHOT}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]]; then echo "error: inherited base image snapshot '${BASE_SNAPSHOT}' is not in YYYYMMDDTHHMMSSZ format" >&2; exit 1; fi; \
+    echo "Inheriting Ubuntu snapshot ${BASE_SNAPSHOT} from base image"
+
 # Install common build tools
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt \
