@@ -17,6 +17,15 @@ variable "PUSH_GHCR" {
   default = false
 }
 
+variable "UBUNTU_SNAPSHOT" {
+  # Empty (default) means: use the submodule Dockerfile's ARG_UBUNTU_SNAPSHOT
+  # default. Set to a YYYYMMDDTHHMMSSZ timestamp to build the base image
+  # against a different snapshot; the agent stages on top inherit it
+  # automatically, e.g.:
+  #   UBUNTU_SNAPSHOT=20261101T000000Z docker buildx bake -f docker-bake.hcl
+  default = ""
+}
+
 group "default" {
     targets = ["plain", "dotnet", "java", "android"]
 }
@@ -27,6 +36,9 @@ target "base" {
   context = "azure-devops-agent-on-kubernetes/src"
   dockerfile = "../Dockerfile"
   platforms = PLATFORMS
+  # Only pass the snapshot when explicitly set; otherwise the submodule
+  # Dockerfile's own ARG_UBUNTU_SNAPSHOT default applies.
+  args = UBUNTU_SNAPSHOT != "" ? { ARG_UBUNTU_SNAPSHOT = UBUNTU_SNAPSHOT } : {}
   # Internal base image does not need canonical digest-only push; build graph consumers use target:base.
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
 }

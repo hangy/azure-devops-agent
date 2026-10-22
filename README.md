@@ -43,6 +43,7 @@ Included toolchains by variant (major versions only)
 
 Notes on exact versions
 - Exact, pinned versions (minor/patch) are kept in the JSON files under `src/dependencies/` and `azure-devops-agent-on-kubernetes/src/dependencies/`. For example: [src/dependencies/dotnet-sdk.json](src/dependencies/dotnet-sdk.json), [src/dependencies/cosign.json](src/dependencies/cosign.json), [src/dependencies/android-sdk.json](src/dependencies/android-sdk.json), and [azure-devops-agent-on-kubernetes/src/dependencies/agent.json](azure-devops-agent-on-kubernetes/src/dependencies/agent.json).
+- Ubuntu base reproducibility: the submodule base image is digest-pinned and all `apt` operations against the Ubuntu archive resolve to a pinned point in time (`ARG_UBUNTU_SNAPSHOT`, via `APT::Snapshot` / [snapshot.ubuntu.com](https://snapshot.ubuntu.com/)). This `Dockerfile` inherits that pin from the base image — no snapshot setting here, so the two can never drift apart; the build fails fast if the base image carries no pin. `docker inspect` shows the effective snapshot via the inherited `io.ubuntu.snapshot` label. Snapshot refreshes flow in through the submodule (monthly bump there, picked up here by Dependabot `gitsubmodule` updates); to build the base against a different snapshot once, e.g. `UBUNTU_SNAPSHOT=20261101T000000Z ./build.sh`.
 
 Build & CI
 - Local build (uses Docker Buildx bake):
