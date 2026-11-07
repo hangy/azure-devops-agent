@@ -159,7 +159,10 @@ jobs:
               echo "No SPDX SBOM data available for $REF" >&2
               continue
             }
-            echo "$PREDICATE" > "$OUT"
+            echo "$PREDICATE" | jq . > "$OUT" || {
+              echo "Invalid SBOM JSON for $REF" >&2
+              continue
+            }
             echo "SBOM written to $OUT"
           done
 
