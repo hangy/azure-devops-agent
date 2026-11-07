@@ -159,7 +159,7 @@ jobs:
               echo "No SPDX SBOM data available for $REF" >&2
               continue
             }
-            echo "$PREDICATE" | jq . > "$OUT" || {
+            echo "$PREDICATE" | jq 'if type == "string" then fromjson else . end' > "$OUT" || {
               echo "Invalid SBOM JSON for $REF" >&2
               continue
             }
