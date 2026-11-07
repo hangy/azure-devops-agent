@@ -130,18 +130,20 @@ jobs:
           sudo mv cosign /usr/local/bin/
           cosign version
 
-      - name: Sign images and attestations (keyless)
+      - name: Sign images (keyless)
         if: github.ref == 'refs/heads/main'
-        env:
-          COSIGN_EXPERIMENTAL: "true"
         run: |
+          set -euo pipefail
           for TARGET in plain dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
             echo "Signing $REF@$DIGEST"
-            cosign sign "$REF@$DIGEST" --yes
-            echo "Verifying provenance attestation exists for $REF"
-            cosign verify-attestation "$REF@$DIGEST" --type=provenance || true
+            cosign sign --yes "$REF@$DIGEST"
+            echo "Verifying signature for $REF@$DIGEST"
+            cosign verify \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$REF@$DIGEST"
           done
 
       - name: Extract SBOMs via imagetools inspect (SPDX)
@@ -157,33 +159,29 @@ jobs:
               echo "No SPDX SBOM data available for $REF" >&2
               continue
             }
-            # Wrap predicate in minimal SPDX document envelope
-            echo "$PREDICATE" | jq '{
-              spdxVersion: "SPDX-2.3",
-              dataLicense: "MIT",
-              SPDXID: "SPDXRef-DOCUMENT",
-              name: "'"$TARGET"'-sbom",
-              documentNamespace: "'"$REF"'",
-              creationInfo: {
-                created: (now | strftime("%Y-%m-%dT%H:%M:%SZ")),
-                creators: ["Tool: buildkit-syft"]
-              },
-              packages: .packages,
-              relationships: .relationships
-            }' > "$OUT"
+            echo "$PREDICATE" > "$OUT"
             echo "SBOM written to $OUT"
           done
 
-      - name: Verify SBOM attestations (keyless)
+      - name: Attest and verify SBOMs (keyless)
         if: github.ref == 'refs/heads/main'
-        env:
-          COSIGN_EXPERIMENTAL: "true"
         run: |
           set -euo pipefail
           for TARGET in plain dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
-            echo "Verifying SBOM attestation for $REF (SPDX)"
-            cosign verify-attestation "$REF" --type=spdx || echo "Warning: SBOM attestation verification failed for $REF" >&2
+            DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
+            PREDICATE=sbom/${TARGET}-sbom.json
+            if [ ! -f "$PREDICATE" ]; then
+              echo "Missing SBOM predicate $PREDICATE for $REF@$DIGEST" >&2
+              continue
+            fi
+            echo "Attesting SBOM for $REF@$DIGEST"
+            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST"
+            echo "Verifying SBOM attestation for $REF@$DIGEST (SPDX)"
+            cosign verify-attestation \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              --type spdx "$REF@$DIGEST"
           done
 
       - name: Submit dependencies to GitHub Dependency Graph
