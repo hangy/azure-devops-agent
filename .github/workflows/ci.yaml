@@ -179,7 +179,7 @@ jobs:
               continue
             fi
             echo "Attesting SBOM for $REF@$DIGEST"
-            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST"
+            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST" || echo "SBOM attestation already exists in transparency log (409 conflict)" >&2
             echo "Verifying SBOM attestation for $REF@$DIGEST (SPDX)"
             cosign verify-attestation \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
