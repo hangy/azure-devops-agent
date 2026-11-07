@@ -159,10 +159,11 @@ jobs:
               echo "No SPDX SBOM data available for $REF" >&2
               continue
             }
-            echo "$PREDICATE" | jq 'if type == "string" then fromjson else . end' > "$OUT" || {
-              echo "Invalid SBOM JSON for $REF" >&2
+            echo "$PREDICATE" | jq -e 'type == "object" and has("spdxVersion")' > /dev/null 2>&1 || {
+              echo "No SPDX SBOM object available for $REF" >&2
               continue
             }
+            echo "$PREDICATE" | jq . > "$OUT"
             echo "SBOM written to $OUT"
           done
 
@@ -179,12 +180,19 @@ jobs:
               continue
             fi
             echo "Attesting SBOM for $REF@$DIGEST"
-            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST" || echo "SBOM attestation already exists in transparency log (409 conflict)" >&2
+            if ! cosign attest --yes --predicate "$PREDICATE" --type spdxjson "$REF@$DIGEST" 2>"/tmp/cosign-attest-${TARGET}.log"; then
+              if grep -q "createLogEntryConflict\|409" "/tmp/cosign-attest-${TARGET}.log"; then
+                echo "SBOM attestation already exists in transparency log for $REF@$DIGEST" >&2
+              else
+                cat "/tmp/cosign-attest-${TARGET}.log" >&2
+                exit 1
+              fi
+            fi
             echo "Verifying SBOM attestation for $REF@$DIGEST (SPDX)"
             cosign verify-attestation \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              --type spdx "$REF@$DIGEST"
+              --type spdxjson "$REF@$DIGEST"
           done
 
       - name: Submit dependencies to GitHub Dependency Graph

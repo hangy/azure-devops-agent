@@ -63,8 +63,7 @@ target "plain" {
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-plain"] : []
   # Push by tag; digest will still be available for signing/inspection. push-by-digest removed due to GHCR incompatibility with tagged digest-only push.
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
-  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
-  sbom = true
+  attest = PUSH_GHCR ? ["type=provenance,mode=max", "type=sbom"] : []
 }
 
 target "dotnet" {
@@ -73,8 +72,7 @@ target "dotnet" {
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-dotnet"] : []
   # Push by tag; digest will still be available for signing/inspection. push-by-digest removed due to GHCR incompatibility with tagged digest-only push.
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
-  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
-  sbom = true
+  attest = PUSH_GHCR ? ["type=provenance,mode=max", "type=sbom"] : []
 }
 
 target "java" {
@@ -82,8 +80,7 @@ target "java" {
   target = "agent-java"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-java"] : []
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
-  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
-  sbom = true
+  attest = PUSH_GHCR ? ["type=provenance,mode=max", "type=sbom"] : []
 }
 
 target "android" {
@@ -91,6 +88,5 @@ target "android" {
   target = "agent-android"
   tags = PUSH_GHCR ? ["${REGISTRY}/${IMAGE_NAME}:main-android"] : []
   output = PUSH_GHCR ? ["type=image,push=true"] : ["type=docker"]
-  attest = PUSH_GHCR ? ["type=provenance,mode=max"] : []
-  sbom = true
+  attest = PUSH_GHCR ? ["type=provenance,mode=max", "type=sbom"] : []
 }
