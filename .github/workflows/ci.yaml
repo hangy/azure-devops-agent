@@ -159,7 +159,7 @@ jobs:
               echo "No SPDX SBOM data available for $REF" >&2
               continue
             }
-            echo "$PREDICATE" | jq . > "$OUT" || {
+            echo "$PREDICATE" | jq 'if type == "string" then fromjson else . end' > "$OUT" || {
               echo "Invalid SBOM JSON for $REF" >&2
               continue
             }
@@ -179,7 +179,7 @@ jobs:
               continue
             fi
             echo "Attesting SBOM for $REF@$DIGEST"
-            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST" || echo "SBOM attestation already exists in transparency log (409 conflict)" >&2
+            cosign attest --yes --predicate "$PREDICATE" --type spdx "$REF@$DIGEST"
             echo "Verifying SBOM attestation for $REF@$DIGEST (SPDX)"
             cosign verify-attestation \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
