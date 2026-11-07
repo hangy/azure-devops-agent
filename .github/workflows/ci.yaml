@@ -138,6 +138,13 @@ jobs:
           for TARGET in plain dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
+            if cosign verify \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$REF@$DIGEST" >/dev/null 2>&1; then
+              echo "Signature already verified for $REF@$DIGEST"
+              continue
+            fi
             echo "Signing $REF@$DIGEST"
             cosign_with_retry "/tmp/cosign-sign-${TARGET}.log" true sign --yes "$REF@$DIGEST"
             echo "Verifying signature for $REF@$DIGEST"
@@ -179,6 +186,13 @@ jobs:
             PREDICATE=sbom/${TARGET}-sbom.json
             if [ ! -f "$PREDICATE" ]; then
               echo "Missing SBOM predicate $PREDICATE for $REF@$DIGEST" >&2
+              continue
+            fi
+            if cosign verify-attestation \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              --type spdxjson "$REF@$DIGEST" >/dev/null 2>&1; then
+              echo "SBOM attestation already verified for $REF@$DIGEST"
               continue
             fi
             echo "Attesting SBOM for $REF@$DIGEST"

@@ -8,10 +8,15 @@
 # so workflow re-runs stay idempotent.
 #
 # Usage: cosign_with_retry <logfile> <tolerate-conflict:true|false> <cosign args...>
+# Tunables (env): COSIGN_RETRY_MAX_ATTEMPTS (default 8), COSIGN_RETRY_INITIAL_DELAY
+# (default 15), COSIGN_RETRY_MAX_DELAY (default 180).
 cosign_with_retry() {
   local log=$1 tolerate_conflict=$2
   shift 2
-  local attempt=1 max_attempts=5 delay=15
+  local attempt=1
+  local max_attempts=${COSIGN_RETRY_MAX_ATTEMPTS:-8}
+  local delay=${COSIGN_RETRY_INITIAL_DELAY:-15}
+  local max_delay=${COSIGN_RETRY_MAX_DELAY:-180}
   local transient='giving up after|i/o timeout|context deadline exceeded|TLS handshake timeout|connection reset|unexpected EOF|no such host|server misbehaving|502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|429 Too Many Requests'
   while :; do
     if cosign "$@" 2>"$log"; then
@@ -34,5 +39,8 @@ cosign_with_retry() {
     sleep "$delay"
     attempt=$((attempt + 1))
     delay=$((delay * 2))
+    if [ "$delay" -gt "$max_delay" ]; then
+      delay=$max_delay
+    fi
   done
 }
