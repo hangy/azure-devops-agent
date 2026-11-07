@@ -134,11 +134,12 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
+          source .github/scripts/cosign-with-retry.sh
           for TARGET in plain dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
             echo "Signing $REF@$DIGEST"
-            cosign sign --yes "$REF@$DIGEST"
+            cosign_with_retry "/tmp/cosign-sign-${TARGET}.log" true sign --yes "$REF@$DIGEST"
             echo "Verifying signature for $REF@$DIGEST"
             cosign verify \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
@@ -171,6 +172,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
+          source .github/scripts/cosign-with-retry.sh
           for TARGET in plain dotnet java android; do
             REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${TARGET}
             DIGEST=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest.Digest}}' | tr -d '"')
@@ -180,14 +182,8 @@ jobs:
               continue
             fi
             echo "Attesting SBOM for $REF@$DIGEST"
-            if ! cosign attest --yes --predicate "$PREDICATE" --type spdxjson "$REF@$DIGEST" 2>"/tmp/cosign-attest-${TARGET}.log"; then
-              if grep -q "createLogEntryConflict\|409" "/tmp/cosign-attest-${TARGET}.log"; then
-                echo "SBOM attestation already exists in transparency log for $REF@$DIGEST" >&2
-              else
-                cat "/tmp/cosign-attest-${TARGET}.log" >&2
-                exit 1
-              fi
-            fi
+            cosign_with_retry "/tmp/cosign-attest-${TARGET}.log" true \
+              attest --yes --predicate "$PREDICATE" --type spdxjson "$REF@$DIGEST"
             echo "Verifying SBOM attestation for $REF@$DIGEST (SPDX)"
             cosign verify-attestation \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.*" \
