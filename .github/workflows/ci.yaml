@@ -174,6 +174,128 @@ jobs:
             echo "SBOM written to $OUT"
           done
 
+      - name: Generate SPDX SBOM for pinned dependencies (incl. base image)
+        # No `if`: runs on main and PRs. PR snapshots feed Dependency Review;
+        # main snapshots are submitted together with the image SBOMs below.
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, glob, os, re, datetime
+
+          # Explicit purls so GitHub can match versions to advisories.
+          # Fallback below derives pkg:github/<owner>/<repo> from download_url,
+          # otherwise pkg:generic/<name>.
+          PURL_OVERRIDES = {
+              # src/dependencies/*.json (this repo, installed in agent stages)
+              "docker-compose": lambda v: f"pkg:github/docker/compose@v{v}",
+              "cosign": lambda v: f"pkg:github/sigstore/cosign@v{v}",
+              "kustomize": lambda v: f"pkg:github/kubernetes-sigs/kustomize@v{v}",
+              "dotnet-sdk": lambda v: f"pkg:github/dotnet/sdk@v{v}",
+              "android-sdk": lambda v: f"pkg:generic/google.android-cmdline-tools@{v}",
+              # azure-devops-agent-on-kubernetes/src/dependencies/*.json (base image)
+              "azure-devops-agent": lambda v: f"pkg:github/microsoft/azure-pipelines-agent@v{v}",
+              "buildkit": lambda v: f"pkg:github/moby/buildkit@v{v}",
+              "helm": lambda v: f"pkg:github/helm/helm@v{v}",
+              "kubectl": lambda v: f"pkg:github/kubernetes/kubernetes@v{v}",
+              "powershell": lambda v: f"pkg:github/PowerShell/PowerShell@v{v}",
+              "yq": lambda v: f"pkg:github/mikefarah/yq@v{v}",
+          }
+
+          DEP_DIRS = [
+              "src/dependencies",
+              "azure-devops-agent-on-kubernetes/src/dependencies",
+          ]
+
+          def expand_url(tmpl, version, arch="amd64"):
+              # Resolve {arch} via download_arch map (amd64 entry) like the Dockerfiles do
+              return tmpl.replace("{version}", version).replace("{arch}", arch)
+
+          packages = []
+          relationships = []
+          for dep_dir in DEP_DIRS:
+              for path in sorted(glob.glob(f"{dep_dir}/*.json")):
+                  with open(path) as f:
+                      dep = json.load(f)
+                  name = dep["name"]
+                  version = dep["version"]
+                  tmpl = dep.get("download_url", "NOASSERTION")
+                  arch_map = dep.get("download_arch", {})
+                  # Pick amd64 release arch for the downloadLocation, mirroring the Dockerfiles
+                  release_arch = arch_map.get("amd64", "amd64") if isinstance(arch_map, dict) else "amd64"
+                  sha_map = dep.get("sha256") or dep.get("sha512") or {}
+                  concrete_arch = "amd64"
+                  if isinstance(sha_map, dict) and concrete_arch not in sha_map and sha_map:
+                      concrete_arch = sorted(sha_map.keys())[0]
+                      release_arch = arch_map.get(concrete_arch, concrete_arch) if isinstance(arch_map, dict) else concrete_arch
+                  download = expand_url(tmpl, version, release_arch) if tmpl not in ("NOASSERTION", "NONE", "") else "NOASSERTION"
+
+                  if name in PURL_OVERRIDES:
+                      purl = PURL_OVERRIDES[name](version)
+                  else:
+                      m = re.search(r"github\.com/([^/]+)/([^/]+)/", tmpl)
+                      if m:
+                          owner, repo = m.group(1), m.group(2)
+                          tag = f"v{version}" if "/v{version}" in tmpl or "/download/v" in tmpl else version
+                          purl = f"pkg:github/{owner}/{repo}@{tag}"
+                      else:
+                          purl = f"pkg:generic/{re.sub(r'[^a-zA-Z0-9_.-]', '-', name).lower()}@{version}"
+
+                  spdx_id = "SPDXRef-Package-" + re.sub(r"[^A-Za-z0-9_-]", "-", name)
+                  packages.append({
+                      "SPDXID": spdx_id,
+                      "name": name,
+                      "versionInfo": version,
+                      "downloadLocation": download if download.startswith(("https://", "http://")) else "NOASSERTION",
+                      "filesAnalyzed": False,
+                      "supplier": "NOASSERTION",
+                      "licenseConcluded": "NOASSERTION",
+                      "licenseDeclared": "NOASSERTION",
+                      "copyrightText": "NOASSERTION",
+                      "externalRefs": [{
+                          "referenceCategory": "PACKAGE-MANAGER",
+                          "referenceType": "purl",
+                          "referenceLocator": purl
+                      }]
+                  })
+                  relationships.append({
+                      "spdxElementId": "SPDXRef-DOCUMENT",
+                      "relationshipType": "DESCRIBES",
+                      "relatedSpdxElement": spdx_id
+                  })
+                  print(f"{path}: {name}@{version} -> {purl}")
+
+          repo = os.environ.get("GITHUB_REPOSITORY", "hangy/azure-devops-agent")
+          sha = os.environ.get("GITHUB_SHA", "local")
+          doc = {
+              "spdxVersion": "SPDX-2.3",
+              "dataLicense": "CC0-1.0",
+              "SPDXID": "SPDXRef-DOCUMENT",
+              "name": "pinned-dependencies-sbom",
+              "documentNamespace": f"https://github.com/{repo}/sbom/pinned-dependencies-{sha}",
+              "creationInfo": {
+                  "created": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                  "creators": ["Tool: azure-devops-agent-pinned-dependencies-sbom", "Organization: hangy"]
+              },
+              "packages": packages,
+              "relationships": relationships
+          }
+          os.makedirs("sbom", exist_ok=True)
+          with open("sbom/pinned-dependencies-sbom.json", "w") as f:
+              json.dump(doc, f, indent=2)
+              f.write("\n")
+          print(f"Wrote sbom/pinned-dependencies-sbom.json with {len(packages)} packages")
+          PY
+          cat sbom/pinned-dependencies-sbom.json
+
+      - name: Submit pinned dependencies snapshot for Dependency Review (same-repo PRs)
+        # dependency-review-action kann nichts submitten, es liest nur den Graph.
+        # Dieser Snapshot zum PR-Head versorgt den Review mit den gepinnten Versionen.
+        # Fork-PRs haben nur ein Read-Token, daher der Guard auf same-repo.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: advanced-security/spdx-dependency-submission-action@b009efcf8b9d562a4569d2028c276522232e631f # v0.4.0
+        with:
+          filePath: sbom/pinned-dependencies-sbom.json
+
       - name: Verify SBOM attestations (keyless)
         if: github.ref == 'refs/heads/main'
         env:
